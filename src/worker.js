@@ -227,7 +227,7 @@ async function getMainPage(env) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>智能旅游助手 - 发现中国最美风景</title>
     <meta name="description" content="您的智能旅行伙伴，帮助您发现中国最美的风景">
-    <link rel="stylesheet" href="/static/css/style.css">
+
     <style>
         /* 内联关键CSS */
         * { margin: 0; padding: 0; box-sizing: border-box; }
