@@ -1,0 +1,354 @@
+{% extends 'admin/layout.html' %}
+
+{% block page_title %}管理员管理{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4><i class="fas fa-user-cog me-2"></i>管理员管理</h4>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAdminModal">
+        <i class="fas fa-plus me-2"></i>添加管理员
+    </button>
+</div>
+
+<!-- 管理员列表 -->
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>管理员信息</th>
+                    <th>角色</th>
+                    <th>最后登录</th>
+                    <th>创建时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for admin in admins %}
+                <tr>
+                    <td>{{ admin.id }}</td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="bg-danger bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                                <span class="text-danger fw-bold">{{ admin.username[0]|upper }}</span>
+                            </div>
+                            <div>
+                                <strong>{{ admin.username }}</strong>
+                                {% if admin.id == session.get('admin_id') %}
+                                <span class="badge bg-success ms-2">当前登录</span>
+                                {% endif %}
+                                <br>
+                                <small class="text-muted">{{ admin.email or '未设置邮箱' }}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        {% if admin.role == 'super_admin' %}
+                        <span class="badge bg-danger">
+                            <i class="fas fa-crown me-1"></i>超级管理员
+                        </span>
+                        {% else %}
+                        <span class="badge bg-primary">
+                            <i class="fas fa-user-shield me-1"></i>管理员
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if admin.last_login %}
+                        <div>{{ admin.last_login.strftime('%Y-%m-%d') }}</div>
+                        <small class="text-muted">{{ admin.last_login.strftime('%H:%M:%S') }}</small>
+                        {% else %}
+                        <span class="text-muted">从未登录</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div>{{ admin.created_at.strftime('%Y-%m-%d') if admin.created_at else '未知' }}</div>
+                        <small class="text-muted">{{ admin.created_at.strftime('%H:%M') if admin.created_at else '' }}</small>
+                    </td>
+                    <td>
+                        {% if admin.id != session.get('admin_id') %}
+                        <button class="btn btn-sm btn-outline-primary" onclick="editAdmin({{ admin.id }})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="resetAdminPassword({{ admin.id }})">
+                            <i class="fas fa-key"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteAdmin({{ admin.id }})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 权限说明 -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>权限说明</h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6><span class="badge bg-danger me-2">超级管理员</span></h6>
+                <ul class="list-unstyled text-muted small">
+                    <li><i class="fas fa-check text-success me-2"></i>管理所有景点数据</li>
+                    <li><i class="fas fa-check text-success me-2"></i>管理用户账号</li>
+                    <li><i class="fas fa-check text-success me-2"></i>审核评论</li>
+                    <li><i class="fas fa-check text-success me-2"></i>添加/删除管理员</li>
+                    <li><i class="fas fa-check text-success me-2"></i>系统设置</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6><span class="badge bg-primary me-2">管理员</span></h6>
+                <ul class="list-unstyled text-muted small">
+                    <li><i class="fas fa-check text-success me-2"></i>管理景点数据</li>
+                    <li><i class="fas fa-check text-success me-2"></i>查看用户信息</li>
+                    <li><i class="fas fa-check text-success me-2"></i>审核评论</li>
+                    <li><i class="fas fa-times text-danger me-2"></i>无法管理其他管理员</li>
+                    <li><i class="fas fa-times text-danger me-2"></i>无法修改系统设置</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加管理员模态框 -->
+<div class="modal fade" id="addAdminModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加管理员</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addAdminForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">用户名 *</label>
+                        <input type="text" class="form-control" name="username" required>
+                        <div class="form-text">用户名将用于登录管理后台</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">邮箱</label>
+                        <input type="email" class="form-control" name="email">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">密码 *</label>
+                        <input type="password" class="form-control" name="password" required>
+                        <div class="form-text">密码至少6个字符</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">确认密码 *</label>
+                        <input type="password" class="form-control" name="confirm_password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">角色</label>
+                        <select class="form-select" name="role">
+                            <option value="admin">管理员</option>
+                            <option value="super_admin">超级管理员</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">添加</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑管理员模态框 -->
+<div class="modal fade" id="editAdminModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑管理员</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editAdminForm">
+                <div class="modal-body">
+                    <input type="hidden" name="admin_id" id="editAdminId">
+                    <div class="mb-3">
+                        <label class="form-label">用户名</label>
+                        <input type="text" class="form-control" name="username" id="editAdminUsername" readonly>
+                        <div class="form-text">用户名不可修改</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">邮箱</label>
+                        <input type="email" class="form-control" name="email" id="editAdminEmail">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">角色</label>
+                        <select class="form-select" name="role" id="editAdminRole">
+                            <option value="admin">管理员</option>
+                            <option value="super_admin">超级管理员</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editAdmin(id) {
+    // 获取管理员数据并填充编辑表单
+    const adminsData = {{ admins_data|tojson|default('[]') }};
+    const admin = adminsData.find(a => a.id === id);
+    
+    if (admin) {
+        document.getElementById('editAdminId').value = admin.id;
+        document.getElementById('editAdminUsername').value = admin.username;
+        document.getElementById('editAdminEmail').value = admin.email || '';
+        document.getElementById('editAdminRole').value = admin.role;
+        
+        // 显示编辑模态框
+        new bootstrap.Modal(document.getElementById('editAdminModal')).show();
+    } else {
+        alert('获取管理员数据失败');
+    }
+}
+
+function resetAdminPassword(id) {
+    if (confirm('确定要重置该管理员的密码吗？新密码将重置为 admin123')) {
+        fetch(`/api/admins/${id}/reset-password`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+            } else {
+                alert('重置失败：' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('重置失败');
+        });
+    }
+}
+
+function deleteAdmin(id) {
+    if (confirm('确定要删除这个管理员吗？此操作不可恢复！')) {
+        fetch(`/api/admins/${id}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('管理员删除成功！');
+                location.reload();
+            } else {
+                alert('删除失败：' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('删除失败');
+        });
+    }
+}
+
+document.getElementById('addAdminForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const password = formData.get('password');
+    const confirmPassword = formData.get('confirm_password');
+    
+    if (password !== confirmPassword) {
+        alert('两次输入的密码不一致');
+        return;
+    }
+    
+    if (password.length < 6) {
+        alert('密码至少6个字符');
+        return;
+    }
+    
+    const data = {
+        username: formData.get('username'),
+        email: formData.get('email'),
+        password: password,
+        role: formData.get('role')
+    };
+    
+    fetch('/api/admins/add', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('管理员添加成功！');
+            location.reload();
+        } else {
+            alert('添加失败：' + result.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('添加失败');
+    });
+});
+
+document.getElementById('editAdminForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const id = formData.get('admin_id');
+    
+    const data = {
+        username: formData.get('username'),
+        email: formData.get('email'),
+        role: formData.get('role')
+    };
+    
+    // 如果提供了新密码，则包含在请求中
+    const newPassword = formData.get('password');
+    if (newPassword) {
+        data.password = newPassword;
+    }
+    
+    fetch(`/api/admins/${id}/update`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('管理员更新成功！');
+            location.reload();
+        } else {
+            alert('更新失败：' + result.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('更新失败');
+    });
+});
+</script>
+{% endblock %}

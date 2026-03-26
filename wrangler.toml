@@ -1,0 +1,20 @@
+name = "travel-assistant"
+main = "src/worker.js"
+compatibility_date = "2024-01-01"
+
+# 基础配置
+[vars]
+SECRET_KEY = "travel-assistant-secret-key-2024"
+
+# 静态资源配置
+[site]
+bucket = "./static"
+
+# KV存储配置
+[[kv_namespaces]]
+binding = "DESTINATIONS"
+id = "travel-destinations-kv"
+
+[[kv_namespaces]]
+binding = "ASSETS"
+id = "travel-assets-kv"

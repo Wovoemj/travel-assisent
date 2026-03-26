@@ -1,0 +1,515 @@
+{% extends 'admin/layout.html' %}
+
+{% block page_title %}景点管理{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4><i class="fas fa-map-marked-alt me-2"></i>景点管理</h4>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDestinationModal">
+        <i class="fas fa-plus me-2"></i>添加景点
+    </button>
+</div>
+
+<!-- 搜索和筛选 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-4">
+                <input type="text" class="form-control" name="search" placeholder="搜索景点名称..." value="{{ request.args.get('search', '') }}">
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" name="category">
+                    <option value="">所有分类</option>
+                    <option value="历史文化" {% if request.args.get('category') == '历史文化' %}selected{% endif %}>历史文化</option>
+                    <option value="自然景观" {% if request.args.get('category') == '自然景观' %}selected{% endif %}>自然景观</option>
+                    <option value="主题乐园" {% if request.args.get('category') == '主题乐园' %}selected{% endif %}>主题乐园</option>
+                    <option value="博物馆" {% if request.args.get('category') == '博物馆' %}selected{% endif %}>博物馆</option>
+                    <option value="古镇古村" {% if request.args.get('category') == '古镇古村' %}selected{% endif %}>古镇古村</option>
+                    <option value="宗教建筑" {% if request.args.get('category') == '宗教建筑' %}selected{% endif %}>宗教建筑</option>
+                    <option value="现代建筑" {% if request.args.get('category') == '现代建筑' %}selected{% endif %}>现代建筑</option>
+                    <option value="公园" {% if request.args.get('category') == '公园' %}selected{% endif %}>公园</option>
+                    <option value="商业街" {% if request.args.get('category') == '商业街' %}selected{% endif %}>商业街</option>
+                    <option value="美食街" {% if request.args.get('category') == '美食街' %}selected{% endif %}>美食街</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" name="province">
+                    <option value="">所有省份</option>
+                    <option value="北京" {% if request.args.get('province') == '北京' %}selected{% endif %}>北京</option>
+                    <option value="天津" {% if request.args.get('province') == '天津' %}selected{% endif %}>天津</option>
+                    <option value="河北" {% if request.args.get('province') == '河北' %}selected{% endif %}>河北</option>
+                    <option value="山西" {% if request.args.get('province') == '山西' %}selected{% endif %}>山西</option>
+                    <option value="内蒙古" {% if request.args.get('province') == '内蒙古' %}selected{% endif %}>内蒙古</option>
+                    <option value="辽宁" {% if request.args.get('province') == '辽宁' %}selected{% endif %}>辽宁</option>
+                    <option value="吉林" {% if request.args.get('province') == '吉林' %}selected{% endif %}>吉林</option>
+                    <option value="黑龙江" {% if request.args.get('province') == '黑龙江' %}selected{% endif %}>黑龙江</option>
+                    <option value="上海" {% if request.args.get('province') == '上海' %}selected{% endif %}>上海</option>
+                    <option value="江苏" {% if request.args.get('province') == '江苏' %}selected{% endif %}>江苏</option>
+                    <option value="浙江" {% if request.args.get('province') == '浙江' %}selected{% endif %}>浙江</option>
+                    <option value="安徽" {% if request.args.get('province') == '安徽' %}selected{% endif %}>安徽</option>
+                    <option value="福建" {% if request.args.get('province') == '福建' %}selected{% endif %}>福建</option>
+                    <option value="江西" {% if request.args.get('province') == '江西' %}selected{% endif %}>江西</option>
+                    <option value="山东" {% if request.args.get('province') == '山东' %}selected{% endif %}>山东</option>
+                    <option value="河南" {% if request.args.get('province') == '河南' %}selected{% endif %}>河南</option>
+                    <option value="湖北" {% if request.args.get('province') == '湖北' %}selected{% endif %}>湖北</option>
+                    <option value="湖南" {% if request.args.get('province') == '湖南' %}selected{% endif %}>湖南</option>
+                    <option value="广东" {% if request.args.get('province') == '广东' %}selected{% endif %}>广东</option>
+                    <option value="广西" {% if request.args.get('province') == '广西' %}selected{% endif %}>广西</option>
+                    <option value="海南" {% if request.args.get('province') == '海南' %}selected{% endif %}>海南</option>
+                    <option value="重庆" {% if request.args.get('province') == '重庆' %}selected{% endif %}>重庆</option>
+                    <option value="四川" {% if request.args.get('province') == '四川' %}selected{% endif %}>四川</option>
+                    <option value="贵州" {% if request.args.get('province') == '贵州' %}selected{% endif %}>贵州</option>
+                    <option value="云南" {% if request.args.get('province') == '云南' %}selected{% endif %}>云南</option>
+                    <option value="西藏" {% if request.args.get('province') == '西藏' %}selected{% endif %}>西藏</option>
+                    <option value="陕西" {% if request.args.get('province') == '陕西' %}selected{% endif %}>陕西</option>
+                    <option value="甘肃" {% if request.args.get('province') == '甘肃' %}selected{% endif %}>甘肃</option>
+                    <option value="青海" {% if request.args.get('province') == '青海' %}selected{% endif %}>青海</option>
+                    <option value="宁夏" {% if request.args.get('province') == '宁夏' %}selected{% endif %}>宁夏</option>
+                    <option value="新疆" {% if request.args.get('province') == '新疆' %}selected{% endif %}>新疆</option>
+                    <option value="台湾" {% if request.args.get('province') == '台湾' %}selected{% endif %}>台湾</option>
+                    <option value="香港" {% if request.args.get('province') == '香港' %}selected{% endif %}>香港</option>
+                    <option value="澳门" {% if request.args.get('province') == '澳门' %}selected{% endif %}>澳门</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="fas fa-search me-1"></i>搜索
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 景点列表 -->
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>景点名称</th>
+                    <th>城市</th>
+                    <th>省份</th>
+                    <th>分类</th>
+                    <th>评分</th>
+                    <th>人气值</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for dest in destinations %}
+                <tr>
+                    <td>{{ dest.id }}</td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="bg-primary bg-opacity-10 rounded p-2 me-2">
+                                <i class="fas fa-image text-primary"></i>
+                            </div>
+                            <div>
+                                <strong>{{ dest.name }}</strong>
+                                <br>
+                                <small class="text-muted">{{ dest.address[:30] }}{% if dest.address|length > 30 %}...{% endif %}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ dest.city }}</td>
+                    <td>{{ dest.province }}</td>
+                    <td><span class="badge bg-secondary">{{ dest.category }}</span></td>
+                    <td>
+                        <span class="text-warning">
+                            <i class="fas fa-star"></i>
+                        </span>
+                        {{ dest.rating }}
+                    </td>
+                    <td>
+                        <div class="progress" style="width: 80px; height: 8px;">
+                            <div class="progress-bar bg-info" style="width: {{ (dest.popularity_score / 100 * 100)|round }}%"></div>
+                        </div>
+                        <small class="text-muted">{{ dest.popularity_score|round }}</small>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editDestination({{ dest.id }})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteDestination({{ dest.id }})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 分页 -->
+{% if pagination.pages > 1 %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if pagination.has_prev %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ pagination.prev_num }}">上一页</a>
+        </li>
+        {% endif %}
+        
+        {% for page_num in pagination.iter_pages() %}
+            {% if page_num %}
+                {% if page_num == pagination.page %}
+                <li class="page-item active">
+                    <span class="page-link">{{ page_num }}</span>
+                </li>
+                {% else %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_num }}">{{ page_num }}</a>
+                </li>
+                {% endif %}
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
+            {% endif %}
+        {% endfor %}
+        
+        {% if pagination.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ pagination.next_num }}">下一页</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- 添加景点模态框 -->
+<div class="modal fade" id="addDestinationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加景点</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addDestinationForm">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">景点名称 *</label>
+                            <input type="text" class="form-control" name="name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">城市 *</label>
+                            <input type="text" class="form-control" name="city" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">省份 *</label>
+                            <select class="form-select" name="province" required>
+                                <option value="">选择省份</option>
+                                <option value="北京">北京</option>
+                                <option value="天津">天津</option>
+                                <option value="河北">河北</option>
+                                <option value="山西">山西</option>
+                                <option value="内蒙古">内蒙古</option>
+                                <option value="辽宁">辽宁</option>
+                                <option value="吉林">吉林</option>
+                                <option value="黑龙江">黑龙江</option>
+                                <option value="上海">上海</option>
+                                <option value="江苏">江苏</option>
+                                <option value="浙江">浙江</option>
+                                <option value="安徽">安徽</option>
+                                <option value="福建">福建</option>
+                                <option value="江西">江西</option>
+                                <option value="山东">山东</option>
+                                <option value="河南">河南</option>
+                                <option value="湖北">湖北</option>
+                                <option value="湖南">湖南</option>
+                                <option value="广东">广东</option>
+                                <option value="广西">广西</option>
+                                <option value="海南">海南</option>
+                                <option value="重庆">重庆</option>
+                                <option value="四川">四川</option>
+                                <option value="贵州">贵州</option>
+                                <option value="云南">云南</option>
+                                <option value="西藏">西藏</option>
+                                <option value="陕西">陕西</option>
+                                <option value="甘肃">甘肃</option>
+                                <option value="青海">青海</option>
+                                <option value="宁夏">宁夏</option>
+                                <option value="新疆">新疆</option>
+                                <option value="台湾">台湾</option>
+                                <option value="香港">香港</option>
+                                <option value="澳门">澳门</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">分类 *</label>
+                            <select class="form-select" name="category" required>
+                                <option value="">选择分类</option>
+                                <option value="历史文化">历史文化</option>
+                                <option value="自然景观">自然景观</option>
+                                <option value="主题乐园">主题乐园</option>
+                                <option value="博物馆">博物馆</option>
+                                <option value="古镇古村">古镇古村</option>
+                                <option value="宗教建筑">宗教建筑</option>
+                                <option value="现代建筑">现代建筑</option>
+                                <option value="公园">公园</option>
+                                <option value="商业街">商业街</option>
+                                <option value="美食街">美食街</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">地址</label>
+                        <input type="text" class="form-control" name="address">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">描述</label>
+                        <textarea class="form-control" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">门票价格</label>
+                            <input type="text" class="form-control" name="price_range" placeholder="如: 60元">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">开放时间</label>
+                            <input type="text" class="form-control" name="opening_hours" placeholder="如: 08:30-17:00">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">评分</label>
+                            <input type="number" class="form-control" name="rating" min="1" max="5" step="0.1" value="4.5">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">添加</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑景点模态框 -->
+<div class="modal fade" id="editDestinationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑景点</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editDestinationForm">
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="editDestId">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">景点名称 *</label>
+                            <input type="text" class="form-control" name="name" id="editDestName" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">城市 *</label>
+                            <input type="text" class="form-control" name="city" id="editDestCity" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">省份 *</label>
+                            <select class="form-select" name="province" id="editDestProvince" required>
+                                <option value="">选择省份</option>
+                                <option value="北京">北京</option>
+                                <option value="天津">天津</option>
+                                <option value="河北">河北</option>
+                                <option value="山西">山西</option>
+                                <option value="内蒙古">内蒙古</option>
+                                <option value="辽宁">辽宁</option>
+                                <option value="吉林">吉林</option>
+                                <option value="黑龙江">黑龙江</option>
+                                <option value="上海">上海</option>
+                                <option value="江苏">江苏</option>
+                                <option value="浙江">浙江</option>
+                                <option value="安徽">安徽</option>
+                                <option value="福建">福建</option>
+                                <option value="江西">江西</option>
+                                <option value="山东">山东</option>
+                                <option value="河南">河南</option>
+                                <option value="湖北">湖北</option>
+                                <option value="湖南">湖南</option>
+                                <option value="广东">广东</option>
+                                <option value="广西">广西</option>
+                                <option value="海南">海南</option>
+                                <option value="重庆">重庆</option>
+                                <option value="四川">四川</option>
+                                <option value="贵州">贵州</option>
+                                <option value="云南">云南</option>
+                                <option value="西藏">西藏</option>
+                                <option value="陕西">陕西</option>
+                                <option value="甘肃">甘肃</option>
+                                <option value="青海">青海</option>
+                                <option value="宁夏">宁夏</option>
+                                <option value="新疆">新疆</option>
+                                <option value="台湾">台湾</option>
+                                <option value="香港">香港</option>
+                                <option value="澳门">澳门</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">分类 *</label>
+                            <select class="form-select" name="category" id="editDestCategory" required>
+                                <option value="">选择分类</option>
+                                <option value="历史文化">历史文化</option>
+                                <option value="自然景观">自然景观</option>
+                                <option value="主题乐园">主题乐园</option>
+                                <option value="博物馆">博物馆</option>
+                                <option value="古镇古村">古镇古村</option>
+                                <option value="宗教建筑">宗教建筑</option>
+                                <option value="现代建筑">现代建筑</option>
+                                <option value="公园">公园</option>
+                                <option value="商业街">商业街</option>
+                                <option value="美食街">美食街</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">地址</label>
+                        <input type="text" class="form-control" name="address" id="editDestAddress">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">描述</label>
+                        <textarea class="form-control" name="description" id="editDestDescription" rows="3"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">门票价格</label>
+                            <input type="text" class="form-control" name="price_range" id="editDestPriceRange" placeholder="如: 60元">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">开放时间</label>
+                            <input type="text" class="form-control" name="opening_hours" id="editDestOpeningHours" placeholder="如: 08:30-17:00">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">评分</label>
+                            <input type="number" class="form-control" name="rating" id="editDestRating" min="1" max="5" step="0.1" value="4.5">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editDestination(id) {
+    // 获取景点数据并填充编辑表单
+    fetch(`/api/destinations/${id}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const dest = data.destination;
+                document.getElementById('editDestId').value = dest.id;
+                document.getElementById('editDestName').value = dest.name;
+                document.getElementById('editDestCity').value = dest.city;
+                document.getElementById('editDestProvince').value = dest.province;
+                document.getElementById('editDestCategory').value = dest.category;
+                document.getElementById('editDestAddress').value = dest.address || '';
+                document.getElementById('editDestDescription').value = dest.description || '';
+                document.getElementById('editDestPriceRange').value = dest.price_range || '';
+                document.getElementById('editDestOpeningHours').value = dest.opening_hours || '';
+                document.getElementById('editDestRating').value = dest.rating;
+                
+                // 显示编辑模态框
+                new bootstrap.Modal(document.getElementById('editDestinationModal')).show();
+            } else {
+                alert('获取景点数据失败：' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('获取景点数据失败');
+        });
+}
+
+function deleteDestination(id) {
+    if (confirm('确定要删除这个景点吗？此操作不可恢复！')) {
+        fetch(`/api/destinations/${id}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('景点删除成功！');
+                location.reload();
+            } else {
+                alert('删除失败：' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('删除失败');
+        });
+    }
+}
+
+document.getElementById('addDestinationForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+    
+    fetch('/api/destinations/add', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('景点添加成功！');
+            location.reload();
+        } else {
+            alert('添加失败：' + result.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('添加失败');
+    });
+});
+
+document.getElementById('editDestinationForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+    const id = data.id;
+    
+    fetch(`/api/destinations/${id}/update`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('景点更新成功！');
+            location.reload();
+        } else {
+            alert('更新失败：' + result.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('更新失败');
+    });
+});
+</script>
+{% endblock %}

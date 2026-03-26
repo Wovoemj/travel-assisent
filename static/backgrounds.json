@@ -1,0 +1,64 @@
+{
+  "backgrounds": [
+    {
+      "url": "https://images.unsplash.com/photo-1547981609-4b6bfe67ca0b?w=1600&q=80",
+      "name": "故宫",
+      "location": "北京"
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1508804185872-d7badad00f7d?w=1600&q=80",
+      "name": "西湖",
+      "location": "杭州"
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=1600&q=80",
+      "name": "外滩",
+      "location": "上海"
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1498307833015-e7b4000eb81c?w=1600&q=80",
+      "name": "长城",
+      "location": "北京"
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1557858315-76c1041a4163?w=1600&q=80",
+      "name": "丽江古城",
+      "location": "云南"
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=1600&q=80",
+      "name": "桂林山水",
+      "location": "广西"
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1621341892144-232b371c7c77?w=1600&q=80",
+      "name": "张家界",
+      "location": "湖南"
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1605647540924-852acf3a67f9?w=1600&q=80",
+      "name": "布达拉宫",
+      "location": "西藏"
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1612698090158-7e4c8d8ac8e6?w=1600&q=80",
+      "name": "九寨沟",
+      "location": "四川"
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1605721952632-2ccf556fb9d9?w=1600&q=80",
+      "name": "黄山",
+      "location": "安徽"
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1605648916311-910ad2711384?w=1600&q=80",
+      "name": "鼓浪屿",
+      "location": "厦门"
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1605648916366-63b4f60ddb9e?w=1600&q=80",
+      "name": "龙门石窟",
+      "location": "洛阳"
+    }
+  ]
+}

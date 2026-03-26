@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能问答 - 旅游助手</title>
+    <!-- Tailwind CSS -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <style>
+        /* 自定义样式 */
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        /* 背景图片样式 - 修复 */
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            position: relative;
+            transition: background-image 0.5s ease-in-out;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('{{ background_image }}');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            filter: brightness(0.7) blur(3px);
+            z-index: -1;
+            transition: background-image 0.5s ease-in-out;
+            pointer-events: none;
+        }
+
+        /* 聊天区域半透明 */
+        .bg-white.rounded-xl.shadow-lg {
+            background-color: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px);
+        }
+
+        /* 导航栏透明 */
+        nav.bg-white {
+            background-color: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(5px);
+        }
+
+        /* 页脚透明 */
+        footer.bg-gray-800 {
+            background-color: rgba(31, 41, 55, 0.95) !important;
+            backdrop-filter: blur(5px);
+        }
+
+        /* 聊天容器 */
+        .chat-container {
+            height: calc(100vh - 300px);
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        /* 消息样式 */
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.assistant {
+            justify-content: flex-start;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 20px;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        .user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .assistant .message-content {
+            background: white;
+            color: #2d3748;
+            border: 1px solid #e2e8f0;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .message-time {
+            font-size: 0.7rem;
+            margin-top: 4px;
+            opacity: 0.7;
+        }
+
+        .user .message-time {
+            text-align: right;
+            color: rgba(255,255,255,0.8);
+        }
+
+        .assistant .message-time {
+            color: #718096;
+        }
+
+        /* 打字指示器 */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            border-bottom-left-radius: 4px;
+            width: fit-content;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+                opacity: 0.6;
+            }
+            30% {
+                transform: translateY(-10px);
+                opacity: 1;
+            }
+        }
+
+        /* 建议按钮 */
+        .suggestion-btn {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            color: #667eea;
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            margin: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+
+        .suggestion-btn:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+            transform: translateY(-2px);
+        }
+
+        /* 快速提问按钮 */
+        .quick-question-btn {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            color: #4a5568;
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin: 4px;
+        }
+
+        .quick-question-btn:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+            transform: translateY(-2px);
+        }
+
+        /* 背景切换按钮 */
+        .bg-switch-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(5px);
+            border-radius: 50px;
+            padding: 10px 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+            color: #4a5568;
+        }
+
+        .bg-switch-btn:hover {
+            background: white;
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+        }
+
+        .bg-switch-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 预加载按钮 */
+        .preload-btn {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(5px);
+            border-radius: 50px;
+            padding: 10px 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+            color: #4a5568;
+        }
+
+        .preload-btn:hover {
+            background: white;
+            transform: scale(1.05);
+        }
+
+        .preload-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 输入框样式 */
+        #messageInput {
+            flex: 1;
+            margin: 0 16px;
+            padding: 10px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 9999px;
+            outline: none;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        #messageInput:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            background: white;
+        }
+
+        /* 发送按钮 */
+        .send-btn {
+            width: 40px;
+            height: 40px;
+            background: #667eea;
+            color: white;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .send-btn:hover {
+            background: #764ba2;
+            transform: scale(1.05);
+        }
+
+        /* 图片预览 */
+        #imagePreview {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            padding: 16px;
+            max-width: 400px;
+            z-index: 1001;
+        }
+
+        /* 地点标签 */
+        .location-badge {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        /* 页脚 */
+        footer {
+            background-color: rgba(31, 41, 55, 0.95) !important;
+            backdrop-filter: blur(5px);
+        }
+
+        /* 动画 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, -20px); }
+            10% { opacity: 1; transform: translate(-50%, 0); }
+            90% { opacity: 1; transform: translate(-50%, 0); }
+            100% { opacity: 0; transform: translate(-50%, -20px); }
+        }
+        .animate-fade-in-out {
+            animation: fadeInOut 3s ease forwards;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="bg-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="/" class="flex items-center space-x-2">
+                        <div class="gradient-bg p-2 rounded-lg">
+                            <i class="fas fa-compass text-white text-xl"></i>
+                        </div>
+                        <span class="font-bold text-xl text-gray-800">智能旅游助手</span>
+                    </a>
+                    <div class="hidden md:flex ml-10 space-x-8">
+                        <a href="/" class="nav-link text-gray-600 hover:text-purple-600">首页</a>
+                        <a href="/chat" class="nav-link text-purple-600 font-medium">智能助手</a>
+                        <a href="/about" class="nav-link text-gray-600 hover:text-purple-600">关于</a>
+                    </div>
+                </div>
+
+                <!-- 导航栏用户部分 -->
+                <div class="flex items-center space-x-4">
+                    {% if current_user %}
+                        <!-- 已登录状态 -->
+                        <div class="relative" x-data="{ open: false }">
+                            <button @click="open = !open" class="flex items-center space-x-2 focus:outline-none">
+                                <div class="w-8 h-8 gradient-bg rounded-full flex items-center justify-center">
+                                    <span class="text-white font-medium">{{ current_user.username[0]|upper }}</span>
+                                </div>
+                                <span class="text-gray-700 hidden md:inline">{{ current_user.username }}</span>
+                                <i class="fas fa-chevron-down text-gray-400 text-sm"></i>
+                            </button>
+                            <div x-show="open" @click.away="open = false"
+                                 class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50"
+                                 style="display: none;">
+                                <a href="/profile-page" class="block px-4 py-2 text-gray-700 hover:bg-purple-50">
+                                    <i class="fas fa-user mr-2 text-purple-500"></i>个人中心
+                                </a>
+                                <a href="/profile-page" class="block px-4 py-2 text-gray-700 hover:bg-purple-50">
+                                    <i class="fas fa-heart mr-2 text-red-500"></i>我的收藏
+                                </a>
+                                <hr class="my-2">
+                                <button onclick="logout()" class="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-50">
+                                    <i class="fas fa-sign-out-alt mr-2"></i>退出登录
+                                </button>
+                            </div>
+                        </div>
+                    {% else %}
+                        <!-- 未登录状态 -->
+                        <a href="/login-page" class="text-purple-600 hover:text-purple-800">登录</a>
+                        <a href="/register-page" class="gradient-bg text-white px-4 py-2 rounded-lg">注册</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 聊天主区域 -->
+    <div class="max-w-4xl mx-auto px-4 py-6">
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <!-- 聊天头部 -->
+            <div class="gradient-bg px-6 py-4">
+                <h2 class="text-xl font-bold text-white flex items-center">
+                    <i class="fas fa-robot mr-2"></i>
+                    智能旅游助手
+                </h2>
+                <p class="text-white text-sm opacity-90 mt-1">
+                    您好！我是智能旅游助手，可以帮您查询景点信息、门票价格、开放时间等。
+                </p>
+            </div>
+
+            <!-- 消息区域 -->
+            <div class="chat-container" id="chatMessages">
+                <!-- 消息会动态添加到这里 -->
+            </div>
+
+            <!-- 快捷提问区域 -->
+            <div class="px-4 py-3 border-t border-gray-200 bg-gray-50">
+                <div class="flex flex-wrap gap-2">
+                    <button class="quick-question-btn" onclick="sendQuickQuestion('北京有哪些景点')">
+                        北京有哪些景点
+                    </button>
+                    <button class="quick-question-btn" onclick="sendQuickQuestion('故宫门票多少钱')">
+                        故宫门票多少钱
+                    </button>
+                    <button class="quick-question-btn" onclick="sendQuickQuestion('长城开放时间')">
+                        长城开放时间
+                    </button>
+                    <button class="quick-question-btn" onclick="sendQuickQuestion('杭州西湖介绍')">
+                        杭州西湖介绍
+                    </button>
+                    {% if current_user %}
+                    <button class="quick-question-btn bg-purple-100 text-purple-700" onclick="sendQuickQuestion('给我推荐景点')">
+                        <i class="fas fa-star mr-1"></i>个性化推荐
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 输入区域 -->
+            <div class="flex items-center p-4 border-t border-gray-200 bg-white">
+                <button type="button" id="imageUploadBtn" class="p-2 text-gray-500 hover:text-purple-600 transition" onclick="triggerImageUpload()">
+                    <i class="fas fa-image text-xl"></i>
+                </button>
+                <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="uploadImage(this)">
+
+                <input type="text" id="messageInput" placeholder="输入消息..."
+                       class="flex-1 mx-4 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500">
+
+                <button type="button" onclick="sendMessage()" class="send-btn">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 图片预览区域 -->
+    <div id="imagePreview" class="hidden fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-xl p-4 max-w-md" style="z-index: 1000;">
+        <div class="flex justify-between items-center mb-2">
+            <h4 class="font-medium">图片预览</h4>
+            <button onclick="cancelImage()" class="text-gray-500 hover:text-gray-700">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <img id="previewImg" src="" alt="预览" class="max-h-64 rounded-lg mx-auto mb-3">
+        <div class="flex justify-end space-x-2">
+            <button onclick="cancelImage()" class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100">
+                取消
+            </button>
+            <button onclick="sendImage()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                发送图片
+            </button>
+        </div>
+    </div>
+
+    <!-- 背景切换按钮 -->
+    <button class="bg-switch-btn" onclick="changeBackground()">
+        <i class="fas fa-image mr-2"></i>切换背景
+    </button>
+
+    <!-- 预加载按钮 -->
+    <button class="preload-btn" onclick="preloadMoreImages()" title="预加载更多图片">
+        <i class="fas fa-download mr-2"></i>预加载
+    </button>
+
+    <!-- 地点标签 -->
+    <div class="location-badge" id="locationBadge">
+        <i class="fas fa-map-marker-alt mr-2"></i>加载中...
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="bg-gray-800 text-white mt-8 py-4">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="text-sm">中国旅游景点查询系统 © 2026 保留所有权利</p>
+            <p class="text-xs text-gray-400 mt-1">探索中国美丽的风景，发现独特的文化</p>
+        </div>
+    </footer>
+
+    <!-- Alpine.js -->
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
+    <script>
+        // ==================== 背景图片管理 ====================
+        let currentBgData = null;
+        let bgStyleElement = null;
+
+        // 初始化背景样式元素
+        function initBgStyle() {
+            if (!bgStyleElement) {
+                bgStyleElement = document.getElementById('bg-style');
+                if (!bgStyleElement) {
+                    bgStyleElement = document.createElement('style');
+                    bgStyleElement.id = 'bg-style';
+                    document.head.appendChild(bgStyleElement);
+                }
+            }
+        }
+
+        // 更新背景图片
+        function updateBackground(imageUrl, name, location) {
+            if (!bgStyleElement) {
+                initBgStyle();
+            }
+
+            // 更新伪元素背景
+            bgStyleElement.textContent = `
+                body::before {
+                    background-image: url('${imageUrl}') !important;
+                }
+            `;
+
+            // 同时也设置 body 背景，确保兼容性
+            document.body.style.backgroundImage = `url('${imageUrl}')`;
+            document.body.style.backgroundSize = 'cover';
+            document.body.style.backgroundPosition = 'center';
+            document.body.style.backgroundAttachment = 'fixed';
+
+            // 更新地点标签
+            updateLocationBadge(name, location);
+
+            // 保存到 localStorage
+            currentBgData = { image: imageUrl, name: name, location: location, timestamp: Date.now() };
+            localStorage.setItem('lastBackground', JSON.stringify(currentBgData));
+        }
+
+        // 更新地点标签
+        function updateLocationBadge(name, location) {
+            const badge = document.getElementById('locationBadge');
+            if (badge) {
+                badge.innerHTML = `<i class="fas fa-map-marker-alt mr-2"></i>${name} · ${location}`;
+            }
+        }
+
+        // 切换背景
+        function changeBackground() {
+            const btn = document.querySelector('.bg-switch-btn');
+            if (btn) {
+                const icon = btn.querySelector('i');
+                if (icon) icon.classList.add('animate-spin');
+                btn.disabled = true;
+            }
+
+            fetch('/api/random-background?t=' + Date.now())
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // 预加载图片
+                        const img = new Image();
+                        img.onload = function() {
+                            updateBackground(data.image, data.name, data.location);
+                            showToast(`✨ 当前背景：${data.name} · ${data.location}`);
+                        };
+                        img.src = data.image;
+                    }
+                })
+                .catch(error => {
+                    console.error('切换背景失败:', error);
+                    showToast('❌ 切换背景失败', true);
+                })
+                .finally(() => {
+                    if (btn) {
+                        const icon = btn.querySelector('i');
+                        if (icon) setTimeout(() => icon.classList.remove('animate-spin'), 500);
+                        btn.disabled = false;
+                    }
+                });
+        }
+
+        // 预加载更多图片
+        function preloadMoreImages() {
+            const btn = document.querySelector('.preload-btn');
+            if (btn) {
+                btn.disabled = true;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>加载中...';
+            }
+
+            fetch('/api/backgrounds/batch?count=4')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // 预加载图片
+                        data.images.forEach(img => {
+                            const preloadImg = new Image();
+                            preloadImg.src = img.url;
+                        });
+                        showToast(`✅ 已预加载 ${data.count} 张图片`);
+                    }
+                })
+                .catch(error => {
+                    console.error('预加载失败:', error);
+                    showToast('❌ 预加载失败', true);
+                })
+                .finally(() => {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-download mr-2"></i>预加载';
+                    }
+                });
+        }
+
+        // 显示提示
+        function showToast(message, isError = false) {
+            const toast = document.createElement('div');
+            toast.className = `fixed top-20 left-1/2 transform -translate-x-1/2 ${isError ? 'bg-red-500' : 'bg-green-500'} text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in-out`;
+            toast.innerHTML = `<i class="fas ${isError ? 'fa-exclamation-circle' : 'fa-check-circle'} mr-2"></i>${message}`;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        }
+
+        // 初始化背景
+        function initBackground() {
+            initBgStyle();
+
+            // 尝试从 localStorage 加载
+            const saved = localStorage.getItem('lastBackground');
+            if (saved) {
+                try {
+                    const bgData = JSON.parse(saved);
+                    // 检查是否过期（24小时）
+                    if (bgData.timestamp && (Date.now() - bgData.timestamp < 24 * 60 * 60 * 1000)) {
+                        updateBackground(bgData.image, bgData.name, bgData.location);
+                        return;
+                    }
+                } catch (e) {
+                    console.log('解析保存的背景失败');
+                }
+            }
+
+            // 加载新背景
+            setTimeout(changeBackground, 100);
+        }
+
+        // ==================== Socket.IO 连接 ====================
+        // 获取当前用户ID
+        const userId = {% if current_user and current_user.id %}{{ current_user.id }}{% else %}null{% endif %};
+
+        // 初始化Socket.IO连接
+        const socket = io({
+            transports: ['polling', 'websocket'],
+            reconnection: true,
+            reconnectionAttempts: 10,
+            reconnectionDelay: 1000,
+            timeout: 20000
+        });
+
+        // 连接成功
+        socket.on('connect', function() {
+            console.log('✅ 已连接到服务器');
+        });
+
+        // 连接错误
+        socket.on('connect_error', function(error) {
+            console.error('❌ 连接错误:', error);
+            addMessage('连接服务器失败，正在重连...', 'assistant');
+        });
+
+        // 接收助手响应
+        socket.on('assistant_response', function(data) {
+            removeTypingIndicator();
+            if (data && data.content) {
+                addMessage(data.content, 'assistant');
+
+                if (data.suggestions && data.suggestions.length > 0) {
+                    addSuggestions(data.suggestions);
+                }
+            }
+        });
+
+        // 接收打字指示
+        socket.on('assistant_typing', function() {
+            addTypingIndicator();
+        });
+
+        // ==================== 消息处理 ====================
+        // 发送消息
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            if (!input) return;
+
+            const message = input.value.trim();
+
+            if (message) {
+                addMessage(message, 'user');
+
+                if (socket && socket.connected) {
+                    socket.emit('user_message', {
+                        message: message,
+                        session_id: '{{ request.remote_addr }}',
+                        user_id: userId
+                    });
+                } else {
+                    addMessage('连接已断开，正在重连...', 'assistant');
+                    if (socket) socket.connect();
+                }
+
+                input.value = '';
+            }
+        }
+
+        // 发送快捷提问
+        function sendQuickQuestion(question) {
+            const input = document.getElementById('messageInput');
+            if (input) {
+                input.value = question;
+                sendMessage();
+            }
+        }
+
+        // 添加消息
+        function addMessage(content, sender) {
+            const messagesDiv = document.getElementById('chatMessages');
+            if (!messagesDiv) return;
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+
+            const time = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+
+            // 格式化消息内容
+            let formattedContent = content || '';
+            formattedContent = formattedContent.replace(/\n/g, '<br>');
+            formattedContent = formattedContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    <div>${formattedContent}</div>
+                    <div class="message-time">${time}</div>
+                </div>
+            `;
+
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // 添加建议按钮
+        function addSuggestions(suggestions) {
+            const messagesDiv = document.getElementById('chatMessages');
+            if (!messagesDiv || !suggestions || suggestions.length === 0) return;
+
+            const suggestionsDiv = document.createElement('div');
+            suggestionsDiv.className = 'message assistant';
+
+            let buttons = '';
+            suggestions.forEach(suggestion => {
+                const safeSuggestion = suggestion.replace(/'/g, "\\'");
+                buttons += `<button class="suggestion-btn" onclick="sendQuickQuestion('${safeSuggestion}')">${suggestion}</button>`;
+            });
+
+            suggestionsDiv.innerHTML = `
+                <div class="message-content">
+                    <div class="flex flex-wrap">${buttons}</div>
+                </div>
+            `;
+
+            messagesDiv.appendChild(suggestionsDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // 添加打字指示器
+        function addTypingIndicator() {
+            removeTypingIndicator();
+
+            const messagesDiv = document.getElementById('chatMessages');
+            if (!messagesDiv) return;
+
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message assistant';
+            typingDiv.id = 'typingIndicator';
+            typingDiv.innerHTML = `
+                <div class="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            `;
+
+            messagesDiv.appendChild(typingDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // 移除打字指示器
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) indicator.remove();
+        }
+
+        // ==================== 图片上传相关 ====================
+        let selectedImage = null;
+        let isUploading = false;
+
+        // 触发图片上传
+        function triggerImageUpload() {
+            if (isUploading) {
+                alert('正在上传中，请稍候...');
+                return;
+            }
+            document.getElementById('imageInput').click();
+        }
+
+        // 上传图片预览
+        function uploadImage(input) {
+            if (isUploading) {
+                return;
+            }
+
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+
+                // 检查文件大小（限制5MB）
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('图片不能超过5MB');
+                    input.value = '';
+                    return;
+                }
+
+                // 检查文件类型
+                if (!file.type.startsWith('image/')) {
+                    alert('请选择图片文件');
+                    input.value = '';
+                    return;
+                }
+
+                // 保存选择的文件
+                selectedImage = file;
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const previewImg = document.getElementById('previewImg');
+                    if (previewImg) {
+                        previewImg.src = e.target.result;
+                    }
+                    const previewDiv = document.getElementById('imagePreview');
+                    if (previewDiv) {
+                        previewDiv.classList.remove('hidden');
+                    }
+                };
+                reader.onerror = function() {
+                    alert('图片预览失败');
+                    selectedImage = null;
+                    input.value = '';
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // 取消发送图片
+        function cancelImage() {
+            document.getElementById('imagePreview').classList.add('hidden');
+            document.getElementById('imageInput').value = '';
+            selectedImage = null;
+        }
+
+        // 发送图片（简化版，不实际发送）
+        function sendImage() {
+            if (!selectedImage) {
+                alert('请先选择图片');
+                return;
+            }
+
+            addMessage('[图片] 已收到您的图片，正在识别中...', 'assistant');
+            cancelImage();
+        }
+
+        // ==================== 退出登录 ====================
+        function logout() {
+            fetch('/api/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = '/';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                window.location.href = '/';
+            });
+        }
+
+        // ==================== 页面初始化 ====================
+        document.addEventListener('DOMContentLoaded', function() {
+            // 清空消息区域
+            const chatMessages = document.getElementById('chatMessages');
+            if (chatMessages) {
+                chatMessages.innerHTML = '';
+                // 添加欢迎消息
+                addMessage('您好！我是您的智能旅游助手。请问有什么可以帮您的吗？', 'assistant');
+            }
+
+            // 初始化背景
+            initBackground();
+
+            // 绑定发送按钮事件
+            const sendBtn = document.querySelector('.send-btn');
+            const messageInput = document.getElementById('messageInput');
+
+            if (sendBtn) {
+                sendBtn.addEventListener('click', sendMessage);
+            }
+
+            if (messageInput) {
+                messageInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        sendMessage();
+                    }
+                });
+            }
+
+            // 重新绑定背景切换按钮
+            const bgSwitchBtn = document.querySelector('.bg-switch-btn');
+            if (bgSwitchBtn) {
+                bgSwitchBtn.replaceWith(bgSwitchBtn.cloneNode(true));
+                const newBtn = document.querySelector('.bg-switch-btn');
+                newBtn.addEventListener('click', changeBackground);
+            }
+
+            // 重新绑定预加载按钮
+            const preloadBtn = document.querySelector('.preload-btn');
+            if (preloadBtn) {
+                preloadBtn.replaceWith(preloadBtn.cloneNode(true));
+                const newBtn = document.querySelector('.preload-btn');
+                newBtn.addEventListener('click', preloadMoreImages);
+            }
+        });
+    </script>
+</body>
+</html>

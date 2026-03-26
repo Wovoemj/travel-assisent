@@ -1,0 +1,688 @@
+<!-- templates/reviews.html -->
+{% extends "base.html" %}
+
+{% block title %}{{ destination.name }} - 用户评论{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 评论页面专用样式 */
+    .rating-badge {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 16px;
+        padding: 2rem 1.5rem;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+
+    .rating-number {
+        font-size: 4rem;
+        font-weight: 700;
+        line-height: 1;
+        margin-bottom: 0.5rem;
+        color: #000000 !important;
+    }
+
+    .star-rating {
+        color: #ffc107;
+        font-size: 1.2rem;
+        letter-spacing: 2px;
+    }
+
+    .star-rating .half-star {
+        position: relative;
+        display: inline-block;
+    }
+
+    .review-card {
+        background: white;
+        border-radius: 20px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.03);
+        transition: all 0.3s ease;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .review-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 30px rgba(102, 126, 234, 0.1);
+        border-color: rgba(102, 126, 234, 0.2);
+    }
+
+    .review-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 1.2rem;
+        color: white;
+        box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+    }
+
+    .avatar-gradient-1 { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .avatar-gradient-2 { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    .avatar-gradient-3 { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+    .avatar-gradient-4 { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+    .avatar-gradient-5 { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+
+    .rating-progress {
+        height: 8px;
+        border-radius: 4px;
+        background-color: #e9ecef;
+        overflow: hidden;
+    }
+
+    .rating-progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        border-radius: 4px;
+        transition: width 0.5s ease;
+    }
+
+    .rating-label {
+        font-weight: 500;
+        color: #495057;
+    }
+
+    .rating-percent {
+        color: #667eea;
+        font-weight: 600;
+    }
+
+    .review-image {
+        width: 80px;
+        height: 80px;
+        object-fit: cover;
+        border-radius: 12px;
+        margin-right: 10px;
+        margin-bottom: 10px;
+        transition: transform 0.3s ease;
+        cursor: pointer;
+    }
+
+    .review-image:hover {
+        transform: scale(1.05);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+
+    .like-button {
+        background: none;
+        border: 1px solid #e9ecef;
+        border-radius: 30px;
+        padding: 0.5rem 1.2rem;
+        font-size: 0.9rem;
+        color: #6c757d;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .like-button:hover {
+        background: #667eea;
+        border-color: #667eea;
+        color: white;
+    }
+
+    .like-button i {
+        margin-right: 0.3rem;
+    }
+
+    .like-button.liked {
+        background: #667eea;
+        border-color: #667eea;
+        color: white;
+    }
+
+    .user-level-badge {
+        background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+        color: white;
+        padding: 0.2rem 0.8rem;
+        border-radius: 30px;
+        font-size: 0.7rem;
+        font-weight: 500;
+        margin-left: 0.5rem;
+        display: inline-block;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.03);
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        color: #dee2e6;
+        margin-bottom: 1rem;
+    }
+
+    .empty-state h3 {
+        color: #495057;
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-state p {
+        color: #adb5bd;
+        margin-bottom: 1.5rem;
+    }
+
+    .pagination-custom {
+        margin-top: 2rem;
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .pagination-custom .page-link {
+        border: none;
+        padding: 0.7rem 1.2rem;
+        border-radius: 12px;
+        color: #667eea;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .pagination-custom .page-link:hover {
+        background: rgba(102, 126, 234, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .pagination-custom .page-item.active .page-link {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .breadcrumb-custom {
+        background: rgba(255,255,255,0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 30px;
+        padding: 0.8rem 1.5rem;
+        border: 1px solid rgba(255,255,255,0.2);
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .breadcrumb-custom a {
+        color: rgba(255,255,255,0.8);
+        text-decoration: none;
+        transition: color 0.3s;
+    }
+
+    .breadcrumb-custom a:hover {
+        color: white;
+    }
+
+    .breadcrumb-custom .separator {
+        color: rgba(255,255,255,0.4);
+        margin: 0 0.5rem;
+    }
+
+    .breadcrumb-custom .current {
+        color: white;
+        font-weight: 500;
+    }
+
+    /* 模态框样式 */
+    .modal-content {
+        border: none;
+        border-radius: 24px;
+        overflow: hidden;
+    }
+
+    .modal-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 1.5rem;
+    }
+
+    .modal-header .btn-close {
+        filter: brightness(0) invert(1);
+        opacity: 0.8;
+    }
+
+    .modal-header .btn-close:hover {
+        opacity: 1;
+    }
+
+    .modal-body {
+        padding: 2rem;
+    }
+
+    .form-control, .form-select {
+        border: 2px solid #e9ecef;
+        border-radius: 16px;
+        padding: 0.8rem 1.2rem;
+        transition: all 0.3s;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .rating-stars {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+        margin: 1rem 0;
+    }
+
+    .rating-stars i {
+        color: #ffc107;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .rating-stars i:hover {
+        transform: scale(1.1);
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 16px;
+        padding: 0.8rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-outline-primary {
+        border: 2px solid #667eea;
+        color: #667eea;
+        border-radius: 16px;
+        padding: 0.8rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+
+    .btn-outline-primary:hover {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-color: transparent;
+        color: white;
+        transform: translateY(-2px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- 面包屑导航 -->
+    <div class="mb-4">
+        <div class="breadcrumb-custom">
+            <a href="/">首页</a>
+            <span class="separator">›</span>
+            <a href="{{ url_for('dest_detail', dest_id=destination.id) }}">{{ destination.name }}</a>
+            <span class="separator">›</span>
+            <span class="current">用户评论</span>
+        </div>
+    </div>
+
+    <!-- 评分概览卡片 -->
+    <div class="rating-badge mb-5">
+        <div class="row align-items-center">
+            <div class="col-md-4 text-center text-md-start mb-4 mb-md-0">
+                <div class="rating-number">{{ destination.rating }}</div>
+                <div class="star-rating mb-2">
+                    {% for i in range(5) %}
+                        {% if i < destination.rating|int %}
+                            <i class="fas fa-star"></i>
+                        {% elif i < destination.rating %}
+                            <i class="fas fa-star-half-alt"></i>
+                        {% else %}
+                            <i class="far fa-star"></i>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <div class="opacity-75">{{ destination.review_count }} 条评价</div>
+            </div>
+            <div class="col-md-8">
+                <div class="row">
+                    {% for i in range(5,0,-1) %}
+                    <div class="col-12 mb-2">
+                        <div class="row align-items-center">
+                            <div class="col-2">
+                                <span class="rating-label">{{ i }}星</span>
+                            </div>
+                            <div class="col-7">
+                                <div class="rating-progress">
+                                    <div class="rating-progress-bar" style="width: {{ rating_distribution[i] }}%"></div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <span class="rating-percent">{{ rating_distribution[i] }}%</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 评论列表头部 -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="mb-0 fw-bold">
+            <i class="fas fa-comments me-2 text-purple-600"></i>
+            用户评论 <span class="text-muted ms-2 small">共 {{ pagination.total }} 条</span>
+        </h4>
+        <div class="d-flex gap-2">
+            <select class="form-select" style="width: auto; border-radius: 30px;">
+                <option>最新排序</option>
+                <option>评分最高</option>
+                <option>最有帮助</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- 评论列表 -->
+    {% if reviews and reviews|length > 0 %}
+        {% for review in reviews %}
+        <div class="review-card">
+            <div class="d-flex">
+                <!-- 用户头像 -->
+                <div class="me-3">
+                    <div class="review-avatar avatar-gradient-{{ loop.index % 5 + 1 }}">
+                        {{ review.username[0]|upper }}
+                    </div>
+                </div>
+
+                <!-- 评论内容 -->
+                <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <h5 class="fw-bold mb-1 d-flex align-items-center">
+                                {{ review.username }}
+                                {% if review.user_level %}
+                                <span class="user-level-badge">{{ review.user_level }}会员</span>
+                                {% endif %}
+                            </h5>
+                            <div class="d-flex align-items-center">
+                                <div class="star-rating me-2">
+                                    {% for i in range(5) %}
+                                        {% if i < review.rating|int %}
+                                            <i class="fas fa-star" style="font-size: 0.9rem;"></i>
+                                        {% elif i < review.rating %}
+                                            <i class="fas fa-star-half-alt" style="font-size: 0.9rem;"></i>
+                                        {% else %}
+                                            <i class="far fa-star" style="font-size: 0.9rem;"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                                <span class="fw-bold me-2">{{ review.rating }}</span>
+                                <span class="text-muted small">{{ review.created_at }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p class="mb-3" style="line-height: 1.7;">{{ review.content }}</p>
+
+                    <!-- 评论图片 -->
+                    {% if review.images and review.images|length > 0 %}
+                    <div class="mb-3 d-flex flex-wrap">
+                        {% for image in review.images %}
+                        <img src="{{ image }}" class="review-image" alt="评论图片" onclick="showFullImage('{{ image }}')">
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- 互动按钮 -->
+                    <div class="d-flex">
+                        <button class="like-button me-2" onclick="likeReview(this, {{ review.id }})">
+                            <i class="far fa-thumbs-up"></i>
+                            <span>{{ review.likes }}</span>
+                        </button>
+                        <button class="like-button" onclick="replyToReview({{ review.id }})">
+                            <i class="far fa-comment"></i>
+                            <span>回复</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        <!-- 分页 -->
+        {% if pagination.pages > 1 %}
+        <nav class="pagination-custom">
+            <ul class="pagination">
+                {% if pagination.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('reviews_page', dest_id=destination.id, page=pagination.prev_num) }}">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for page_num in pagination.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num == pagination.page %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                        {% elif page_num == '...' %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('reviews_page', dest_id=destination.id, page=page_num) }}">{{ page_num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endif %}
+                {% endfor %}
+
+                {% if pagination.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('reviews_page', dest_id=destination.id, page=pagination.next_num) }}">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+    {% else %}
+    <!-- 空状态 -->
+    <div class="empty-state">
+        <i class="fas fa-comment-slash"></i>
+        <h3>暂无评论</h3>
+        <p class="text-muted">成为第一个评论这个景点的人吧！</p>
+        {% if current_user %}
+        <button onclick="showReviewForm()" class="btn btn-primary">
+            <i class="fas fa-pen me-2"></i>写评论
+        </button>
+        {% else %}
+        <a href="/login-page" class="btn btn-outline-primary">
+            <i class="fas fa-sign-in-alt me-2"></i>登录后评论
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- 底部写评论按钮 -->
+    {% if reviews and reviews|length > 0 %}
+    <div class="text-center mt-5">
+        {% if current_user %}
+        <button onclick="showReviewForm()" class="btn btn-primary btn-lg px-5">
+            <i class="fas fa-pen me-2"></i>写评论
+        </button>
+        {% else %}
+        <a href="/login-page" class="btn btn-outline-primary btn-lg px-5">
+            <i class="fas fa-sign-in-alt me-2"></i>登录后写评论
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- 写评论模态框 -->
+<div class="modal fade" id="reviewModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">写评论 - {{ destination.name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="reviewForm">
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">评分</label>
+                        <div class="rating-stars">
+                            {% for i in range(1,6) %}
+                            <i class="fas fa-star" data-rating="{{ i }}" style="font-size: 2rem;"></i>
+                            {% endfor %}
+                        </div>
+                        <input type="hidden" name="rating" id="rating" value="5">
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">评论内容</label>
+                        <textarea name="content" rows="5" class="form-control" placeholder="分享你的游玩体验..." required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">游玩日期</label>
+                        <input type="date" name="visit_date" class="form-control" value="{{ now.strftime('%Y-%m-%d') if now else '' }}">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">提交评论</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 图片预览模态框 -->
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">图片预览</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="fullImage" src="" alt="预览" style="max-width: 100%; max-height: 70vh;">
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 评分星星交互
+    document.addEventListener('DOMContentLoaded', function() {
+        const stars = document.querySelectorAll('.rating-stars i');
+        const ratingInput = document.getElementById('rating');
+
+        stars.forEach((star, index) => {
+            star.addEventListener('click', function() {
+                const rating = this.dataset.rating;
+                ratingInput.value = rating;
+                updateStars(stars, rating);
+            });
+
+            star.addEventListener('mouseover', function() {
+                updateStars(stars, this.dataset.rating);
+            });
+
+            star.addEventListener('mouseout', function() {
+                updateStars(stars, ratingInput.value);
+            });
+        });
+
+        function updateStars(stars, rating) {
+            stars.forEach((s, index) => {
+                if (index < rating) {
+                    s.className = 'fas fa-star';
+                    s.style.color = '#ffc107';
+                } else {
+                    s.className = 'far fa-star';
+                    s.style.color = '#ffc107';
+                }
+            });
+        }
+    });
+
+    // 显示写评论表单
+    function showReviewForm() {
+        var myModal = new bootstrap.Modal(document.getElementById('reviewModal'));
+        myModal.show();
+    }
+
+    // 显示完整图片
+    function showFullImage(imageUrl) {
+        document.getElementById('fullImage').src = imageUrl;
+        var myModal = new bootstrap.Modal(document.getElementById('imageModal'));
+        myModal.show();
+    }
+
+    // 点赞功能
+    function likeReview(button, reviewId) {
+        button.classList.toggle('liked');
+        const span = button.querySelector('span');
+        let count = parseInt(span.textContent);
+        if (button.classList.contains('liked')) {
+            span.textContent = count + 1;
+            button.innerHTML = '<i class="fas fa-thumbs-up"></i> <span>' + (count + 1) + '</span>';
+        } else {
+            span.textContent = count - 1;
+            button.innerHTML = '<i class="far fa-thumbs-up"></i> <span>' + (count - 1) + '</span>';
+        }
+    }
+
+    // 回复评论
+    function replyToReview(reviewId) {
+        alert('回复功能开发中...');
+    }
+
+    // 提交评论
+    document.getElementById('reviewForm')?.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        {% if not current_user %}
+        alert('请先登录');
+        window.location.href = '/login-page';
+        return;
+        {% endif %}
+
+        const formData = new FormData(this);
+        const data = {
+            rating: document.getElementById('rating').value,
+            content: formData.get('content'),
+            visit_date: formData.get('visit_date')
+        };
+
+        try {
+            const response = await fetch('/api/reviews/{{ destination.id }}/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('评论成功！');
+                location.reload();
+            } else {
+                alert('评论失败：' + (result.error || '未知错误'));
+            }
+        } catch (err) {
+            alert('网络错误，请稍后重试');
+        }
+    });
+</script>
+{% endblock %}

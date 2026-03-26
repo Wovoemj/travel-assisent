@@ -1,0 +1,729 @@
+<!-- templates/base.html - 优化版 -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{% block title %}智能旅游助手{% endblock %}</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="您的智能旅行伙伴，帮助您发现中国最美的风景">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="旅游助手">
+    <meta name="msapplication-TileColor" content="#667eea">
+    <meta name="msapplication-tap-highlight" content="no">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/images/icon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/images/icon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/images/icon-180x180.png">
+    <link rel="mask-icon" href="/static/images/safari-pinned-tab.svg" color="#667eea">
+    
+    <!-- 预加载关键资源 -->
+    <link rel="dns-prefetch" href="cdn.bootcdn.net">
+    <link rel="dns-prefetch" href="cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://cdn.bootcdn.net" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- 优化后的CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/optimized.css') }}">
+    <!-- 界面美化CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/beautify.css') }}">
+    <style>
+        :root {
+            --primary: #667eea;
+            --primary-dark: #764ba2;
+            --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('{{ background_image if background_image else "/static/images/default-bg.jpg" }}');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            filter: brightness(0.7) blur(3px);
+            z-index: -1;
+            transition: background-image 0.5s ease-in-out;
+        }
+
+        .gradient-bg {
+            background: var(--gradient);
+        }
+
+        .hover-lift {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .hover-lift:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.12) !important;
+        }
+
+        .hover-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .hover-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1) !important;
+        }
+
+        .nav-link {
+            position: relative;
+            transition: color 0.3s ease;
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--gradient);
+            transition: width 0.3s ease;
+        }
+
+        .nav-link:hover::after,
+        .nav-link.active::after {
+            width: 100%;
+        }
+
+        .badge {
+            font-weight: 500;
+        }
+
+        .card {
+            border: none;
+            border-radius: 16px;
+            overflow: hidden;
+            background-color: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px);
+        }
+
+        nav.bg-white {
+            background-color: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(5px);
+        }
+
+        footer {
+            background-color: rgba(31, 41, 55, 0.95) !important;
+            backdrop-filter: blur(5px);
+        }
+
+        .btn-primary {
+            background: var(--gradient);
+            border: none;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-outline-primary {
+            border-color: var(--primary);
+            color: var(--primary);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-outline-primary:hover {
+            background: var(--gradient);
+            border-color: transparent;
+        }
+
+        /* 面包屑 */
+        .breadcrumb {
+            background: transparent;
+            padding: 0;
+        }
+
+        .breadcrumb-item a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .breadcrumb-item a:hover {
+            text-decoration: underline;
+        }
+
+        /* 分页 */
+        .page-link {
+            color: var(--primary);
+            border-radius: 8px;
+            margin: 0 2px;
+            border: none;
+            transition: all 0.3s ease;
+        }
+
+        .page-item.active .page-link {
+            background: var(--gradient);
+            border: none;
+        }
+
+        .page-link:hover {
+            background-color: rgba(102, 126, 234, 0.1);
+            color: var(--primary);
+        }
+
+        /* 模态框 */
+        .modal-content {
+            border: none;
+            border-radius: 20px;
+        }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
+        }
+
+        footer a {
+            color: #a0a0a0;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        footer a:hover {
+            color: #667eea;
+        }
+
+        /* 背景切换按钮 */
+        .bg-switch-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(5px);
+            border-radius: 50px;
+            padding: 10px 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+            color: #4a5568;
+        }
+
+        .bg-switch-btn:hover {
+            background: white;
+            transform: scale(1.05);
+        }
+
+        .bg-switch-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .location-badge {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, -20px); }
+            10% { opacity: 1; transform: translate(-50%, 0); }
+            90% { opacity: 1; transform: translate(-50%, 0); }
+            100% { opacity: 0; transform: translate(-50%, -20px); }
+        }
+        .animate-fade-in-out {
+            animation: fadeInOut 3s ease forwards;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+<!-- 导航栏 - base.html -->
+<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+    <div class="container">
+        <a class="navbar-brand d-flex align-items-center" href="/">
+            <div class="gradient-bg p-2 rounded-lg me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                <i class="fas fa-compass text-white" style="font-size: 1.2rem;"></i>
+            </div>
+            <span class="fw-bold" style="font-size: 1.1rem;">智能旅游助手</span>
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">首页</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/chat">智能助手</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/?view=hot">热门景点</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/about">关于</a>
+                </li>
+            </ul>
+
+            <!-- 搜索框 -->
+            <form class="d-flex me-3" action="/search" method="GET">
+                <div class="input-group">
+                    <input type="search" name="q" class="form-control rounded-pill" placeholder="搜索景点..." aria-label="搜索">
+                    <button class="btn btn-outline-primary rounded-pill ms-2" type="submit">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </form>
+
+            <!-- 用户区域 -->
+            <div class="d-flex align-items-center">
+                {% if current_user %}
+                    <div class="dropdown">
+                        <button class="btn btn-light dropdown-toggle d-flex align-items-center" type="button" data-bs-toggle="dropdown">
+                            <div class="gradient-bg text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
+                                {{ current_user.username[0]|upper }}
+                            </div>
+                            <span class="d-none d-md-inline">{{ current_user.username }}</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="/profile-page"><i class="fas fa-user me-2 text-primary"></i>个人中心</a></li>
+                            <li><a class="dropdown-item" href="/profile-page"><i class="fas fa-heart me-2 text-danger"></i>我的收藏</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><button class="dropdown-item text-danger" onclick="logout()"><i class="fas fa-sign-out-alt me-2"></i>退出登录</button></li>
+                        </ul>
+                    </div>
+                {% else %}
+                    <a href="/login-page" class="btn btn-outline-primary me-2">登录</a>
+                    <a href="/register-page" class="btn btn-primary text-white">注册</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</nav>
+
+    <!-- 主内容区 -->
+    <main class="py-4">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="py-5 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <h5 class="mb-3"><i class="fas fa-compass me-2"></i>智能旅游助手</h5>
+                    <p class="text-muted">您的智能旅行伙伴，帮助您发现中国最美的风景。</p>
+                </div>
+                <div class="col-md-2 mb-4">
+                    <h6 class="mb-3">快速链接</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="/">首页</a></li>
+                        <li class="mb-2"><a href="/?view=hot">热门景点</a></li>
+                        <li class="mb-2"><a href="/chat">智能助手</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3 mb-4">
+                    <h6 class="mb-3">景点分类</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="/?category=历史古迹">历史古迹</a></li>
+                        <li class="mb-2"><a href="/?category=自然景观">自然景观</a></li>
+                        <li class="mb-2"><a href="/?category=主题公园">主题公园</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3 mb-4">
+                    <h6 class="mb-3">联系我们</h6>
+                    <p class="text-muted mb-1"><i class="fas fa-envelope me-2"></i>support@travelai.com</p>
+                    <p class="text-muted mb-1"><i class="fas fa-phone me-2"></i>400-123-4567</p>
+                    <div class="mt-3">
+                        <a href="#" class="me-3"><i class="fab fa-weixin fa-lg"></i></a>
+                        <a href="#" class="me-3"><i class="fab fa-weibo fa-lg"></i></a>
+                        <a href="#"><i class="fab fa-qq fa-lg"></i></a>
+                    </div>
+                </div>
+            </div>
+            <hr class="my-4" style="border-color: #333;">
+            <div class="text-center text-muted">
+                <p class="mb-0">&copy; 2024 智能旅游助手. 保留所有权利.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 背景切换按钮 -->
+    <button class="bg-switch-btn" onclick="changeBackground()">
+        <i class="fas fa-image me-2"></i>切换背景
+    </button>
+
+    <!-- 地点标签 -->
+    <div class="location-badge" id="locationBadge">
+        <i class="fas fa-map-marker-alt mr-2"></i>加载中...
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+    <!-- Alpine.js -->
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+
+    <script>
+        // ==================== 背景图片管理 ====================
+        let bgStyleElement = null;
+        let currentBgData = null;
+
+        function initBgStyle() {
+            if (!bgStyleElement) {
+                bgStyleElement = document.getElementById('bg-style');
+                if (!bgStyleElement) {
+                    bgStyleElement = document.createElement('style');
+                    bgStyleElement.id = 'bg-style';
+                    document.head.appendChild(bgStyleElement);
+                }
+            }
+        }
+
+        function updateBackground(imageUrl, name, location) {
+            if (!bgStyleElement) {
+                initBgStyle();
+            }
+
+            bgStyleElement.textContent = `
+                body::before {
+                    background-image: url('${imageUrl}') !important;
+                }
+            `;
+
+            document.body.style.backgroundImage = `url('${imageUrl}')`;
+
+            const badge = document.getElementById('locationBadge');
+            if (badge) {
+                badge.innerHTML = `<i class="fas fa-map-marker-alt mr-2"></i>${name} · ${location}`;
+            }
+
+            currentBgData = { image: imageUrl, name: name, location: location, timestamp: Date.now() };
+            localStorage.setItem('lastBackground', JSON.stringify(currentBgData));
+        }
+
+        function changeBackground() {
+            const btn = document.querySelector('.bg-switch-btn');
+            if (btn) {
+                btn.disabled = true;
+                const icon = btn.querySelector('i');
+                if (icon) icon.classList.add('animate-spin');
+            }
+
+            fetch('/api/random-background?t=' + Date.now())
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const img = new Image();
+                        img.onload = function() {
+                            updateBackground(data.image, data.name, data.location);
+                            showToast(`✨ 当前背景：${data.name} · ${data.location}`);
+                        };
+                        img.src = data.image;
+                    }
+                })
+                .catch(error => {
+                    console.error('切换背景失败:', error);
+                    showToast('❌ 切换背景失败', 'error');
+                })
+                .finally(() => {
+                    if (btn) {
+                        btn.disabled = false;
+                        const icon = btn.querySelector('i');
+                        if (icon) setTimeout(() => icon.classList.remove('animate-spin'), 500);
+                    }
+                });
+        }
+
+        function initBackground() {
+            initBgStyle();
+
+            const saved = localStorage.getItem('lastBackground');
+            if (saved) {
+                try {
+                    const bgData = JSON.parse(saved);
+                    if (bgData.timestamp && (Date.now() - bgData.timestamp < 24 * 60 * 60 * 1000)) {
+                        updateBackground(bgData.image, bgData.name, bgData.location);
+                        return;
+                    }
+                } catch (e) {
+                    console.log('解析保存的背景失败');
+                }
+            }
+
+            setTimeout(changeBackground, 100);
+        }
+
+        function showToast(message, isError = false) {
+            const toast = document.createElement('div');
+            toast.className = `position-fixed top-0 start-50 translate-middle-x mt-4 ${isError ? 'bg-danger' : 'bg-success'} text-white px-4 py-2 rounded-pill shadow-lg animate-fade-in-out`;
+            toast.style.zIndex = '9999';
+            toast.innerHTML = `<i class="fas ${isError ? 'fa-exclamation-circle' : 'fa-check-circle'} me-2"></i>${message}`;
+            document.body.appendChild(toast);
+
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // 退出登录
+        async function logout() {
+            try {
+                const response = await fetch('/api/logout', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                console.error('退出失败:', error);
+                window.location.href = '/';
+            }
+        }
+
+        // 图片加载失败处理
+        function handleImageError(img, name, city) {
+            img.onerror = null;
+            img.src = '{{ url_for("static", filename="images/placeholder.jpg") }}';
+        }
+
+        // 页面加载完成后初始化背景
+        document.addEventListener('DOMContentLoaded', function() {
+            initBackground();
+
+            // 重新绑定背景切换按钮
+            const bgSwitchBtn = document.querySelector('.bg-switch-btn');
+            if (bgSwitchBtn) {
+                bgSwitchBtn.replaceWith(bgSwitchBtn.cloneNode(true));
+                const newBtn = document.querySelector('.bg-switch-btn');
+                newBtn.addEventListener('click', changeBackground);
+            }
+        });
+    </script>
+<!-- 性能优化脚本 -->
+<script src="{{ url_for('static', filename='js/performance-optimized.js') }}"></script>
+<!-- Alpine.js -->
+{#<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>#}
+
+<!-- Service Worker 注册 -->
+<script>
+// 注册 Service Worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/static/sw.js')
+            .then(function(registration) {
+                console.log('ServiceWorker 注册成功: ', registration.scope);
+                
+                // 检查更新
+                registration.addEventListener('updatefound', function() {
+                    const newWorker = registration.installing;
+                    console.log('ServiceWorker 正在安装新版本...');
+                    
+                    newWorker.addEventListener('statechange', function() {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            // 新版本可用，提示用户刷新
+                            showUpdateNotification();
+                        }
+                    });
+                });
+            })
+            .catch(function(error) {
+                console.log('ServiceWorker 注册失败: ', error);
+            });
+        
+        // 监听 Service Worker 控制器变化
+        navigator.serviceWorker.addEventListener('controllerchange', function() {
+            console.log('ServiceWorker 控制器已更改');
+            window.location.reload();
+        });
+    });
+}
+
+// 显示更新通知
+function showUpdateNotification() {
+    const notification = document.createElement('div');
+    notification.className = 'position-fixed bottom-0 start-50 translate-middle-x mb-4 pwa-update-notification';
+    notification.style.cssText = 'z-index: 9999; background: white; padding: 1rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); max-width: 90%; text-align: center;';
+    notification.innerHTML = `
+        <div class="mb-2">
+            <i class="fas fa-sync-alt text-primary me-2"></i>
+            <strong>新版本可用</strong>
+        </div>
+        <p class="mb-3 small text-muted">应用已更新，刷新页面获取最新功能</p>
+        <div>
+            <button class="btn btn-primary btn-sm me-2" onclick="updateApp()">立即更新</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="dismissUpdate(this)">稍后</button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+}
+
+// 更新应用
+function updateApp() {
+    if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
+    }
+}
+
+// 关闭更新提示
+function dismissUpdate(button) {
+    const notification = button.closest('.pwa-update-notification');
+    if (notification) {
+        notification.remove();
+    }
+}
+
+// PWA 安装提示
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', function(e) {
+    console.log('PWA 安装提示被触发');
+    e.preventDefault();
+    deferredPrompt = e;
+    
+    // 显示安装提示（可选）
+    // showInstallPrompt();
+});
+
+// 显示安装提示
+function showInstallPrompt() {
+    if (!deferredPrompt) return;
+    
+    const installPrompt = document.createElement('div');
+    installPrompt.className = 'position-fixed bottom-0 start-50 translate-middle-x mb-4 pwa-install-prompt';
+    installPrompt.style.cssText = 'z-index: 9999; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 16px; box-shadow: 0 8px 30px rgba(102, 126, 234, 0.4); max-width: 90%; text-align: center;';
+    installPrompt.innerHTML = `
+        <div class="mb-3">
+            <i class="fas fa-mobile-alt fa-2x mb-2"></i>
+            <h6 class="mb-1">安装旅游助手</h6>
+            <p class="small mb-0 opacity-90">添加到主屏幕，随时使用</p>
+        </div>
+        <div>
+            <button class="btn btn-light btn-sm me-2" onclick="installPWA()">安装</button>
+            <button class="btn btn-outline-light btn-sm" onclick="dismissInstall(this)">取消</button>
+        </div>
+    `;
+    
+    document.body.appendChild(installPrompt);
+}
+
+// 安装 PWA
+async function installPWA() {
+    if (!deferredPrompt) return;
+    
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    console.log('PWA 安装结果: ', outcome);
+    deferredPrompt = null;
+    
+    // 移除安装提示
+    const installPrompt = document.querySelector('.pwa-install-prompt');
+    if (installPrompt) {
+        installPrompt.remove();
+    }
+}
+
+// 关闭安装提示
+function dismissInstall(button) {
+    const installPrompt = button.closest('.pwa-install-prompt');
+    if (installPrompt) {
+        installPrompt.remove();
+    }
+}
+
+// PWA 安装完成
+window.addEventListener('appinstalled', function(e) {
+    console.log('PWA 安装完成', e);
+    
+    // 移除安装提示
+    const installPrompt = document.querySelector('.pwa-install-prompt');
+    if (installPrompt) {
+        installPrompt.remove();
+    }
+    
+    // 显示成功消息
+    showToast('🎉 应用安装成功！', false);
+});
+
+// 检测网络状态
+function updateNetworkStatus() {
+    if (!navigator.onLine) {
+        showOfflineIndicator();
+    } else {
+        hideOfflineIndicator();
+    }
+}
+
+// 显示离线指示器
+function showOfflineIndicator() {
+    let indicator = document.querySelector('.offline-indicator');
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.className = 'offline-indicator';
+        indicator.innerHTML = '<i class="fas fa-wifi-slash me-2"></i>当前处于离线模式';
+        document.body.appendChild(indicator);
+    }
+    indicator.style.display = 'block';
+}
+
+// 隐藏离线指示器
+function hideOfflineIndicator() {
+    const indicator = document.querySelector('.offline-indicator');
+    if (indicator) {
+        indicator.style.display = 'none';
+    }
+}
+
+// 监听网络状态变化
+window.addEventListener('online', updateNetworkStatus);
+window.addEventListener('offline', updateNetworkStatus);
+
+// 初始化网络状态
+updateNetworkStatus();
+</script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

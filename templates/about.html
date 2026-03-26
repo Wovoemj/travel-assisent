@@ -1,0 +1,233 @@
+<!-- templates/about.html -->
+{% extends "base.html" %}
+
+{% block title %}关于我们 - 智能旅游助手{% endblock %}
+
+{% block content %}
+<div class="container my-5" style="background: rgba(255,255,255,0.95); padding: 30px; border-radius: 15px;">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <!-- 主标题 -->
+            <div class="text-center mb-5" style="background: white; padding: 40px; border-radius: 10px; border: 2px solid #333;">
+                <div class="mb-4">
+                    <i class="fas fa-map-marked-alt" style="font-size: 4rem; color: #007bff;"></i>
+                </div>
+                <h1 style="color: #000000; font-weight: 900; font-size: 2.5rem;">智能旅游助手</h1>
+                <p style="color: #333333; font-size: 1.2rem; margin-top: 10px;">探索中国美丽的风景，发现独特的文化</p>
+                <div class="d-flex justify-content-center gap-3 mt-4">
+                    <span class="badge bg-primary fs-6">v2.0</span>
+                    <span class="badge bg-success fs-6">AI驱动</span>
+                    <span class="badge bg-info fs-6">开源项目</span>
+                </div>
+            </div>
+
+            <!-- 核心功能 -->
+            <div style="background: white; padding: 30px; border-radius: 10px; border: 2px solid #333; margin-bottom: 30px;">
+                <h3 style="color: #000000; font-weight: bold; margin-bottom: 20px;">
+                    <i class="fas fa-star text-warning me-2"></i>核心功能
+                </h3>
+                <div class="row g-4">
+                    <div class="col-md-6 col-lg-4">
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #ddd;">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="fas fa-search text-primary fa-lg me-2"></i>
+                                <h5 style="color: #000000; margin: 0;">智能搜索</h5>
+                            </div>
+                            <p style="color: #666; margin: 0; font-size: 14px;">支持拼音搜索、模糊匹配、实时建议</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #ddd;">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="fas fa-robot text-success fa-lg me-2"></i>
+                                <h5 style="color: #000000; margin: 0;">AI助手</h5>
+                            </div>
+                            <p style="color: #666; margin: 0; font-size: 14px;">集成多种AI大模型，智能对话</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #ddd;">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="fas fa-cloud-sun text-info fa-lg me-2"></i>
+                                <h5 style="color: #000000; margin: 0;">天气查询</h5>
+                            </div>
+                            <p style="color: #666; margin: 0; font-size: 14px;">实时天气信息、天气预报</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #ddd;">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="fas fa-route text-warning fa-lg me-2"></i>
+                                <h5 style="color: #000000; margin: 0;">行程规划</h5>
+                            </div>
+                            <p style="color: #666; margin: 0; font-size: 14px;">智能行程生成、多日游规划</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #ddd;">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="fas fa-heart text-danger fa-lg me-2"></i>
+                                <h5 style="color: #000000; margin: 0;">收藏管理</h5>
+                            </div>
+                            <p style="color: #666; margin: 0; font-size: 14px;">景点收藏、批量操作</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #ddd;">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="fas fa-map text-success fa-lg me-2"></i>
+                                <h5 style="color: #000000; margin: 0;">地图导航</h5>
+                            </div>
+                            <p style="color: #666; margin: 0; font-size: 14px;">高德地图集成、路线规划</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API接口展示 -->
+            <div style="background: white; padding: 30px; border-radius: 10px; border: 2px solid #333; margin-bottom: 30px;">
+                <h3 style="color: #000000; font-weight: bold; margin-bottom: 20px;">
+                    <i class="fas fa-code text-primary me-2"></i>API接口总览
+                </h3>
+                <div class="table-responsive">
+                    <table class="table" style="border: 1px solid #ddd;">
+                        <thead style="background: #f8f9fa;">
+                            <tr>
+                                <th style="color: #000000; border: 1px solid #ddd;">接口类型</th>
+                                <th style="color: #000000; border: 1px solid #ddd;">接口路径</th>
+                                <th style="color: #000000; border: 1px solid #ddd;">说明</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="color: #333; border: 1px solid #ddd;"><strong>用户认证</strong></td>
+                                <td style="color: #333; border: 1px solid #ddd;"><code>/api/login</code></td>
+                                <td style="color: #333; border: 1px solid #ddd;">用户登录</td>
+                            </tr>
+                            <tr>
+                                <td style="color: #333; border: 1px solid #ddd;"><strong>景点搜索</strong></td>
+                                <td style="color: #333; border: 1px solid #ddd;"><code>/api/search</code></td>
+                                <td style="color: #333; border: 1px solid #ddd;">搜索景点</td>
+                            </tr>
+                            <tr>
+                                <td style="color: #333; border: 1px solid #ddd;"><strong>天气查询</strong></td>
+                                <td style="color: #333; border: 1px solid #ddd;"><code>/api/weather/{city}</code></td>
+                                <td style="color: #333; border: 1px solid #ddd;">获取城市天气</td>
+                            </tr>
+                            <tr>
+                                <td style="color: #333; border: 1px solid #ddd;"><strong>行程规划</strong></td>
+                                <td style="color: #333; border: 1px solid #ddd;"><code>/api/trips</code></td>
+                                <td style="color: #333; border: 1px solid #ddd;">创建行程</td>
+                            </tr>
+                            <tr>
+                                <td style="color: #333; border: 1px solid #ddd;"><strong>收藏功能</strong></td>
+                                <td style="color: #333; border: 1px solid #ddd;"><code>/api/favorite/add</code></td>
+                                <td style="color: #333; border: 1px solid #ddd;">添加收藏</td>
+                            </tr>
+                            <tr>
+                                <td style="color: #333; border: 1px solid #ddd;"><strong>AI助手</strong></td>
+                                <td style="color: #333; border: 1px solid #ddd;"><code>/api/assistant</code></td>
+                                <td style="color: #333; border: 1px solid #ddd;">智能对话</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 移动端访问 -->
+            <div style="background: white; padding: 30px; border-radius: 10px; border: 2px solid #333; margin-bottom: 30px;">
+                <h3 style="color: #000000; font-weight: bold; margin-bottom: 20px;">
+                    <i class="fas fa-mobile-alt text-primary me-2"></i>移动端访问
+                </h3>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div style="background: #e3f2fd; padding: 20px; border-radius: 8px; text-align: center;">
+                            <i class="fas fa-globe" style="font-size: 3rem; color: #1976d2;"></i>
+                            <h5 style="color: #000000; margin-top: 15px;">浏览器访问</h5>
+                            <p style="color: #666;">直接使用手机浏览器访问网站</p>
+                            <div class="input-group mt-3">
+                                <input type="text" class="form-control" value="http://your-domain.com" readonly id="siteUrl" style="border: 1px solid #ddd;">
+                                <button class="btn btn-primary" onclick="copyUrl()">复制</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div style="background: #e8f5e8; padding: 20px; border-radius: 8px; text-align: center;">
+                            <i class="fas fa-download" style="font-size: 3rem; color: #388e3c;"></i>
+                            <h5 style="color: #000000; margin-top: 15px;">添加到主屏幕</h5>
+                            <p style="color: #666;">将网站添加到手机主屏幕，获得类似App的体验</p>
+                            <div style="background: #f5f5f5; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                                <small style="color: #666;">
+                                    <strong>iOS</strong>: Safari → 分享 → 添加到主屏幕<br>
+                                    <strong>Android</strong>: Chrome → 菜单 → 添加到主屏幕
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="alert alert-info mt-4" style="background: #e3f2fd; border: 1px solid #1976d2;">
+                    <i class="fas fa-info-circle me-2" style="color: #1976d2;"></i>
+                    <strong style="color: #000000;">提示：</strong>
+                    <span style="color: #333;">本系统为Web应用，无需下载安装。将网站添加到主屏幕即可获得类似App的体验。</span>
+                </div>
+            </div>
+
+            <!-- 联系我们 -->
+            <div style="background: white; padding: 30px; border-radius: 10px; border: 2px solid #333;">
+                <h3 style="color: #000000; font-weight: bold; margin-bottom: 20px;">
+                    <i class="fas fa-envelope text-primary me-2"></i>联系我们
+                </h3>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
+                            <i class="fas fa-envelope" style="font-size: 2rem; color: #007bff;"></i>
+                            <h6 style="color: #000000; margin-top: 10px;">电子邮箱</h6>
+                            <a href="mailto:travel@example.com" style="color: #007bff;">travel@example.com</a>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
+                            <i class="fab fa-github" style="font-size: 2rem; color: #333;"></i>
+                            <h6 style="color: #000000; margin-top: 10px;">GitHub</h6>
+                            <a href="https://github.com/travel-app" style="color: #007bff;">github.com/travel-app</a>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
+                            <i class="fas fa-bug" style="font-size: 2rem; color: #dc3545;"></i>
+                            <h6 style="color: #000000; margin-top: 10px;">问题反馈</h6>
+                            <a href="https://github.com/travel-app/issues" style="color: #007bff;">提交Issue</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyUrl() {
+    const urlInput = document.getElementById('siteUrl');
+    urlInput.select();
+    document.execCommand('copy');
+    
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '已复制';
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-success');
+    
+    setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-primary');
+    }, 2000);
+}
+
+// 动态生成当前页面URL
+document.addEventListener('DOMContentLoaded', function() {
+    const siteUrl = document.getElementById('siteUrl');
+    siteUrl.value = window.location.origin;
+});
+</script>
+{% endblock %}

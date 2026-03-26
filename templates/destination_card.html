@@ -1,0 +1,62 @@
+<!-- templates/partials/destination_card.html -->
+<a href="/dest/{{ dest.id }}" class="block bg-white rounded-xl shadow-sm overflow-hidden card-hover relative group">
+    <!-- 收藏按钮 -->
+    <button onclick="toggleFavorite({{ dest.id }}); event.preventDefault();"
+            class="absolute top-3 right-3 z-10 w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center hover:scale-110 transition">
+        {% if dest.id in user_favorites %}
+        <i class="fas fa-heart text-red-500"></i>
+        {% else %}
+        <i class="far fa-heart text-gray-400 hover:text-red-500"></i>
+        {% endif %}
+    </button>
+
+    <!-- 景点图片 -->
+    <div class="h-48 bg-gradient-to-r from-purple-400 to-pink-400 relative overflow-hidden">
+        <img class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+             src="{{ dest.cover_image if dest.cover_image else url_for('static', filename='images/placeholder.jpg') }}"
+             alt="{{ dest.name }}"
+             onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/placeholder.jpg') }}';">
+        <!-- 省份标签 -->
+        <span class="absolute top-3 left-3 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+            {{ dest.province }}
+        </span>
+    </div>
+
+    <!-- 内容区域 -->
+    <div class="p-4">
+        <!-- 标题和城市 -->
+        <div class="flex justify-between items-start mb-2">
+            <h3 class="font-bold text-lg text-gray-800">{{ dest.name }}</h3>
+            <span class="text-sm text-gray-500">{{ dest.city }}</span>
+        </div>
+
+        <!-- 描述 -->
+        <p class="text-sm text-gray-600 mb-3 line-clamp-2">
+            {% if dest.description and dest.description|length > 0 %}
+                {{ dest.description[:60] }}{% if dest.description|length > 60 %}...{% endif %}
+            {% else %}
+                {{ dest.name }}位于{{ dest.city }}，是{{ dest.category }}，景色优美，是休闲观光的好去处。
+            {% endif %}
+        </p>
+
+        <!-- 评分和价格 -->
+        <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center">
+                <i class="fas fa-star text-yellow-400 text-sm"></i>
+                <span class="ml-1 font-medium">{{ dest.rating }}</span>
+                <span class="text-xs text-gray-400 ml-1">({{ dest.review_count }})</span>
+            </div>
+            <span class="text-purple-600 font-medium">{{ dest.price_range }}</span>
+        </div>
+
+        <!-- 浏览量和查看详情 -->
+        <div class="flex items-center justify-between pt-3 border-t">
+            <span class="text-xs text-gray-400">
+                <i class="far fa-eye mr-1"></i>{{ dest.popularity_score|int }}浏览
+            </span>
+            <span class="text-purple-600 text-sm font-medium">
+                查看详情 <i class="fas fa-arrow-right ml-1 text-xs"></i>
+            </span>
+        </div>
+    </div>
+</a>

@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据导入导出 - 智能旅游助手</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary: #667eea;
+            --primary-dark: #764ba2;
+            --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: #f8f9fa;
+        }
+
+        .navbar {
+            background: var(--gradient) !important;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .btn-primary {
+            background: var(--gradient);
+            border: none;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-outline-primary {
+            border-color: var(--primary);
+            color: var(--primary);
+            border-radius: 8px;
+        }
+
+        .btn-outline-primary:hover {
+            background: var(--gradient);
+            border-color: transparent;
+        }
+
+        .upload-zone {
+            border: 2px dashed #ddd;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--primary);
+            background-color: rgba(102, 126, 234, 0.05);
+        }
+
+        .upload-zone.dragover {
+            border-color: var(--primary);
+            background-color: rgba(102, 126, 234, 0.1);
+            transform: scale(1.02);
+        }
+
+        .upload-zone i {
+            font-size: 48px;
+            color: #ddd;
+            margin-bottom: 15px;
+            transition: color 0.3s ease;
+        }
+
+        .upload-zone:hover i {
+            color: var(--primary);
+        }
+
+        .progress {
+            height: 8px;
+            border-radius: 4px;
+            background-color: #e9ecef;
+        }
+
+        .progress-bar {
+            background: var(--gradient);
+            border-radius: 4px;
+        }
+
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+        }
+
+        .table th {
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            font-weight: 600;
+        }
+
+        .badge {
+            border-radius: 6px;
+            padding: 5px 10px;
+        }
+
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .file-info {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .error-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #fff3cd;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .success-list {
+            background: #d1edff;
+            border-radius: 8px;
+            padding: 15px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="/admin">
+                <i class="fas fa-compass me-2"></i>
+                <span class="fw-bold">管理后台</span>
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/admin">返回后台</a>
+                <a class="nav-link" href="/">返回前台</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid py-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2 class="mb-1"><i class="fas fa-database me-2"></i>数据导入导出</h2>
+                        <p class="text-muted mb-0">管理景点数据，支持批量导入导出</p>
+                    </div>
+                    <div>
+                        <span class="badge bg-primary fs-6">总景点数: {{ total_count }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- 导出功能 -->
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-white border-0">
+                        <h5 class="mb-0"><i class="fas fa-download me-2 text-primary"></i>数据导出</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">将景点数据导出为不同格式的文件，便于备份和分析。</p>
+                        
+                        <!-- 筛选选项 -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">按分类筛选</label>
+                                <select class="form-select" id="exportCategory">
+                                    <option value="">全部分类</option>
+                                    {% for category, count in categories %}
+                                    <option value="{{ category }}">{{ category }} ({{ count }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">按省份筛选</label>
+                                <select class="form-select" id="exportProvince">
+                                    <option value="">全部省份</option>
+                                    {% for province, count in provinces %}
+                                    <option value="{{ province }}">{{ province }} ({{ count }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- 导出按钮 -->
+                        <div class="row">
+                            <div class="col-md-4 mb-2">
+                                <button class="btn btn-outline-primary w-100" onclick="exportData('json')">
+                                    <i class="fas fa-file-code me-2"></i>JSON格式
+                                </button>
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <button class="btn btn-outline-primary w-100" onclick="exportData('csv')">
+                                    <i class="fas fa-file-csv me-2"></i>CSV格式
+                                </button>
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <button class="btn btn-outline-primary w-100" onclick="exportData('excel')">
+                                    <i class="fas fa-file-excel me-2"></i>Excel格式
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                JSON格式适合程序处理，CSV格式适合数据分析，Excel格式适合查看编辑
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 导入功能 -->
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-white border-0">
+                        <h5 class="mb-0"><i class="fas fa-upload me-2 text-success"></i>数据导入</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">从文件导入景点数据，支持JSON和CSV格式。</p>
+                        
+                        <!-- 格式选择 -->
+                        <div class="mb-3">
+                            <label class="form-label">选择文件格式</label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="importFormat" id="formatJson" value="json" checked>
+                                <label class="btn btn-outline-primary" for="formatJson">JSON格式</label>
+                                
+                                <input type="radio" class="btn-check" name="importFormat" id="formatCsv" value="csv">
+                                <label class="btn btn-outline-primary" for="formatCsv">CSV格式</label>
+                            </div>
+                        </div>
+
+                        <!-- 文件上传区域 -->
+                        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('importFile').click()">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <h5>点击选择文件或拖拽文件到此处</h5>
+                            <p class="text-muted mb-0">支持 .json 和 .csv 格式文件</p>
+                            <input type="file" id="importFile" accept=".json,.csv" style="display: none;">
+                        </div>
+
+                        <!-- 文件信息 -->
+                        <div class="file-info" id="fileInfo" style="display: none;">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-file-alt me-2 text-primary"></i>
+                                <div>
+                                    <strong id="fileName"></strong>
+                                    <div class="text-muted small" id="fileSize"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 导入按钮 -->
+                        <button class="btn btn-success w-100 mt-3" id="importBtn" onclick="importData()" disabled>
+                            <i class="fas fa-upload me-2"></i>开始导入
+                        </button>
+
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                导入前请确保数据格式正确，重复的景点名称会被跳过
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 导入结果 -->
+        <div class="row" id="importResult" style="display: none;">
+            <div class="col-12">
+                <div class="card fade-in">
+                    <div class="card-header bg-white border-0">
+                        <h5 class="mb-0"><i class="fas fa-check-circle me-2 text-success"></i>导入结果</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="stats-card p-3 text-center">
+                                    <h3 id="importedCount">0</h3>
+                                    <p class="mb-0">成功导入</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="bg-warning text-dark p-3 rounded text-center">
+                                    <h3 id="skippedCount">0</h3>
+                                    <p class="mb-0">跳过重复</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="bg-danger text-white p-3 rounded text-center">
+                                    <h3 id="errorCount">0</h3>
+                                    <p class="mb-0">导入失败</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 错误详情 -->
+                        <div id="errorDetails" style="display: none;">
+                            <h6 class="mt-3">错误详情：</h6>
+                            <div class="error-list" id="errorList"></div>
+                        </div>
+
+                        <div class="mt-3">
+                            <button class="btn btn-primary" onclick="location.reload()">继续导入</button>
+                            <a href="/admin" class="btn btn-outline-secondary ms-2">返回后台</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 使用说明 -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-white border-0">
+                        <h5 class="mb-0"><i class="fas fa-question-circle me-2 text-info"></i>使用说明</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-download me-2"></i>导出说明</h6>
+                                <ul class="list-unstyled">
+                                    <li class="mb-2">• 可以按分类或省份筛选导出</li>
+                                    <li class="mb-2">• JSON格式保留完整数据结构</li>
+                                    <li class="mb-2">• CSV格式可用Excel打开编辑</li>
+                                    <li class="mb-2">• Excel格式包含多个工作表</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-upload me-2"></i>导入说明</h6>
+                                <ul class="list-unstyled">
+                                    <li class="mb-2">• 文件编码必须为UTF-8</li>
+                                    <li class="mb-2">• 必须包含名称、城市、省份字段</li>
+                                    <li class="mb-2">• 重复的景点名称会被自动跳过</li>
+                                    <li class="mb-2">• 建议先备份现有数据</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载提示 -->
+    <div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center py-5">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h5 id="loadingText">正在处理...</h5>
+                    <p class="text-muted mb-0">请稍候，不要关闭页面</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        let selectedFile = null;
+
+        // 拖拽上传
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('importFile');
+
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            const format = document.querySelector('input[name="importFormat"]:checked').value;
+            const expectedExt = format === 'json' ? '.json' : '.csv';
+            
+            if (!file.name.endsWith(expectedExt)) {
+                alert(`请选择${expectedExt}格式的文件`);
+                return;
+            }
+
+            selectedFile = file;
+            
+            // 显示文件信息
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = `大小: ${(file.size / 1024).toFixed(1)} KB`;
+            document.getElementById('fileInfo').style.display = 'block';
+            
+            // 启用导入按钮
+            document.getElementById('importBtn').disabled = false;
+            
+            // 更新上传区域显示
+            uploadZone.innerHTML = `
+                <i class="fas fa-check-circle text-success"></i>
+                <h5>文件已选择</h5>
+                <p class="text-muted mb-0">点击重新选择文件</p>
+            `;
+        }
+
+        // 导出数据
+        function exportData(format) {
+            const category = document.getElementById('exportCategory').value;
+            const province = document.getElementById('exportProvince').value;
+            
+            let url = `/api/admin/export/${format}?`;
+            if (category) url += `category=${encodeURIComponent(category)}&`;
+            if (province) url += `province=${encodeURIComponent(province)}&`;
+            
+            // 显示加载
+            const modal = new bootstrap.Modal(document.getElementById('loadingModal'));
+            document.getElementById('loadingText').textContent = `正在导出${format.toUpperCase()}格式...`;
+            modal.show();
+            
+            // 创建隐藏的下载链接
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = '';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // 隐藏加载提示
+            setTimeout(() => {
+                modal.hide();
+            }, 2000);
+        }
+
+        // 导入数据
+        function importData() {
+            if (!selectedFile) {
+                alert('请先选择文件');
+                return;
+            }
+
+            const format = document.querySelector('input[name="importFormat"]:checked').value;
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            // 显示加载
+            const modal = new bootstrap.Modal(document.getElementById('loadingModal'));
+            document.getElementById('loadingText').textContent = '正在导入数据...';
+            modal.show();
+
+            fetch(`/api/admin/import/${format}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                modal.hide();
+                
+                if (data.success) {
+                    // 显示导入结果
+                    showImportResult(data);
+                } else {
+                    alert('导入失败: ' + data.error);
+                }
+            })
+            .catch(error => {
+                modal.hide();
+                alert('导入失败: ' + error.message);
+            });
+        }
+
+        // 显示导入结果
+        function showImportResult(data) {
+            document.getElementById('importedCount').textContent = data.imported;
+            
+            // 计算跳过和失败数量
+            const errors = data.errors || [];
+            const skipped = errors.filter(e => e.includes('已存在')).length;
+            const failed = errors.filter(e => !e.includes('已存在')).length;
+            
+            document.getElementById('skippedCount').textContent = skipped;
+            document.getElementById('errorCount').textContent = failed;
+            
+            // 显示错误详情
+            if (failed > 0) {
+                document.getElementById('errorDetails').style.display = 'block';
+                const errorList = document.getElementById('errorList');
+                errorList.innerHTML = errors.filter(e => !e.includes('已存在'))
+                    .map(e => `<div class="mb-1">• ${e}</div>`).join('');
+            }
+            
+            // 显示结果区域
+            document.getElementById('importResult').style.display = 'block';
+            
+            // 滚动到结果区域
+            document.getElementById('importResult').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // 格式切换时重置文件选择
+        document.querySelectorAll('input[name="importFormat"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                selectedFile = null;
+                document.getElementById('fileInfo').style.display = 'none';
+                document.getElementById('importBtn').disabled = true;
+                
+                uploadZone.innerHTML = `
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h5>点击选择文件或拖拽文件到此处</h5>
+                    <p class="text-muted mb-0">支持 .json 和 .csv 格式文件</p>
+                `;
+                
+                // 清空文件输入
+                document.getElementById('importFile').value = '';
+            });
+        });
+
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ 数据导入导出页面已加载');
+        });
+    </script>
+</body>
+</html>

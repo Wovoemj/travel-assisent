@@ -1,0 +1,592 @@
+<!-- templates/dest_detail.html - 修复 extra_js 块重复定义的问题 -->
+{% extends "base.html" %}
+
+{% block title %}{{ dest.name }} - 景点详情{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- 面包屑导航 -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/">首页</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('index', province=dest.province) }}">{{ dest.province }}</a></li>
+            <li class="breadcrumb-item active">{{ dest.name }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- 左侧：图片和简介 -->
+        <div class="col-lg-8">
+            <!-- 主图 -->
+            <div class="card shadow-sm mb-4">
+                <div class="position-relative">
+                    <img src="{{ dest.cover_image or url_for('static', filename='images/placeholder.jpg') }}"
+                         class="card-img-top" alt="{{ dest.name }}"
+                         style="max-height: 400px; object-fit: cover;"
+                         onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/placeholder.jpg') }}'">
+                    <span class="position-absolute top-0 start-0 badge bg-primary m-3">{{ dest.category }}</span>
+                    {% if current_user %}
+                    <button class="position-absolute top-0 end-0 btn btn-light rounded-circle m-3" onclick="toggleFavorite({{ dest.id }})">
+                        <i class="bi {% if dest.id in user_favorites %}bi-heart-fill text-danger{% else %}bi-heart{% endif %}"></i>
+                    </button>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <h2 class="card-title">{{ dest.name }}</h2>
+                    <p class="text-muted">
+                        <i class="bi bi-geo-alt-fill"></i> {{ dest.city }} · {{ dest.province }}
+                        {% if dest.address %} · {{ dest.address }}{% endif %}
+                    </p>
+                    <p class="card-text">{{ dest.description or '暂无简介' }}</p>
+
+                    <!-- 标签 -->
+                    {% if tags %}
+                    <div class="mb-3">
+                        {% for tag in tags %}
+                        <span class="badge bg-secondary me-1">{{ tag }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- 评分和价格 -->
+                    <div class="d-flex align-items-center justify-content-between border-top pt-3">
+                        <div>
+                            <span class="h3 text-warning"><i class="bi bi-star-fill"></i> {{ dest.rating }}</span>
+                            <small class="text-muted">/5分</small>
+                            <span class="ms-3 text-muted">({{ dest.review_count }}条评价)</span>
+                        </div>
+                        <span class="h5 text-primary">{{ dest.price_range or '免费' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：信息卡片 -->
+        <div class="col-lg-4">
+            <!-- 开放信息 -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5><i class="bi bi-clock me-2"></i>开放信息</h5>
+                    <hr>
+                    <p><strong>开放时间：</strong>{{ dest.opening_hours or '未知' }}</p>
+                    <p><strong>状态：</strong>
+                        {% if dest.is_open %}
+                        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>开放中</span>
+                        {% else %}
+                        <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>已关闭</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+
+            <!-- 评论统计卡片 -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5><i class="bi bi-chat-dots me-2"></i>用户评论</h5>
+                    <hr>
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div>
+                            <span class="h2 text-warning">{{ dest.rating }}</span>
+                            <span class="text-muted">/5分</span>
+                        </div>
+                        <div>
+                            <span class="h4">{{ dest.review_count }}</span>
+                            <span class="text-muted">条评论</span>
+                        </div>
+                    </div>
+
+                    <!-- 评分分布（模拟） -->
+                    <div class="mb-3">
+                        {% for i in range(5,0,-1) %}
+                        <div class="d-flex align-items-center mb-1">
+                            <span class="me-2" style="width: 30px;">{{ i }}星</span>
+                            <div class="progress flex-grow-1" style="height: 8px;">
+                                {% set percentage = (dest.review_count * (0.5 + i*0.1))|int if dest.review_count > 0 else 0 %}
+                                <div class="progress-bar bg-warning" style="width: {{ percentage if percentage <= 100 else 100 }}%"></div>
+                            </div>
+                            <span class="ms-2 small">{{ percentage }}%</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- 查看全部评论按钮 -->
+                    <a href="{{ url_for('reviews_page', dest_id=dest.id) }}" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-chat-dots me-2"></i>查看全部 {{ dest.review_count }} 条评论
+                    </a>
+                </div>
+            </div>
+
+            <!-- 最新评论预览 -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5><i class="bi bi-chat-quote me-2"></i>最新评论</h5>
+                    <hr>
+                    <div id="reviews-preview">
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                            <p class="text-muted mt-2">加载评论中...</p>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('reviews_page', dest_id=dest.id) }}" class="btn btn-link w-100 text-decoration-none">
+                        查看更多 <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- 分享按钮 -->
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <button class="btn btn-outline-secondary w-100" onclick="shareDestination()">
+                        <i class="bi bi-share me-2"></i>分享景点
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 周边推荐 -->
+    <div class="mt-5" data-dest-id="{{ dest.id }}" data-latitude="{{ dest.latitude or '' }}" data-longitude="{{ dest.longitude or '' }}">
+        <h4><i class="bi bi-compass me-2"></i>周边推荐</h4>
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <!-- POI分类筛选 -->
+                <div class="d-flex flex-wrap gap-2 mb-3" id="nearby-filters">
+                    <button class="btn btn-sm btn-primary nearby-filter active" data-category="all">
+                        <i class="bi bi-geo-alt me-1"></i>全部
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary nearby-filter" data-category="hotel">
+                        <i class="bi bi-building me-1"></i>酒店住宿
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary nearby-filter" data-category="restaurant">
+                        <i class="bi bi-cup-hot me-1"></i>餐饮美食
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary nearby-filter" data-category="parking">
+                        <i class="bi bi-p-circle me-1"></i>停车场
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary nearby-filter" data-category="atm">
+                        <i class="bi bi-bank me-1"></i>ATM/银行
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary nearby-filter" data-category="gas_station">
+                        <i class="bi bi-fuel-pump me-1"></i>加油站
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary nearby-filter" data-category="pharmacy">
+                        <i class="bi bi-capsule me-1"></i>药店
+                    </button>
+                </div>
+
+                <!-- 搜索半径选择 -->
+                <div class="mb-3">
+                    <label class="form-label small text-muted">搜索半径：</label>
+                    <div class="btn-group btn-group-sm" role="group" id="radius-selector">
+                        <input type="radio" class="btn-check" name="radius" id="radius-1000" value="1000">
+                        <label class="btn btn-outline-secondary" for="radius-1000">1公里</label>
+                        <input type="radio" class="btn-check" name="radius" id="radius-3000" value="3000" checked>
+                        <label class="btn btn-outline-secondary" for="radius-3000">3公里</label>
+                        <input type="radio" class="btn-check" name="radius" id="radius-5000" value="5000">
+                        <label class="btn btn-outline-secondary" for="radius-5000">5公里</label>
+                    </div>
+                </div>
+
+                <!-- 排序方式 -->
+                <div class="mb-3">
+                    <label class="form-label small text-muted">排序方式：</label>
+                    <select class="form-select form-select-sm" id="sort-selector" style="width: auto;">
+                        <option value="distance">按距离</option>
+                        <option value="rating">按评分</option>
+                        <option value="price">按价格</option>
+                    </select>
+                </div>
+
+                <!-- 周边POI列表 -->
+                <div id="nearby-poi-list">
+                    <div class="text-center py-4">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                        <p class="text-muted mt-2">正在加载周边设施...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 同城推荐 -->
+    {% if related %}
+    <div class="mt-5">
+        <h4><i class="bi bi-geo-alt me-2"></i>同城推荐</h4>
+        <div class="row row-cols-1 row-cols-md-4 g-4">
+            {% for item in related %}
+            <div class="col">
+                <div class="card h-100 shadow-sm hover-card">
+                    <img src="{{ item.cover_image or url_for('static', filename='images/placeholder.jpg') }}"
+                         class="card-img-top" alt="{{ item.name }}"
+                         style="height: 150px; object-fit: cover;"
+                         onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/placeholder.jpg') }}'">
+                    <div class="card-body">
+                        <h6 class="card-title">{{ item.name }}</h6>
+                        <p class="card-text small text-muted">{{ item.city }}</p>
+                        <a href="{{ url_for('dest_detail', dest_id=item.id) }}" class="stretched-link"></a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- 添加背景图片样式和内联脚本 -->
+<style>
+    body {
+        transition: background-image 0.5s ease-in-out;
+        position: relative;
+        min-height: 100vh;
+    }
+    body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: url('{{ background_image }}');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        filter: brightness(0.7) blur(3px);
+        z-index: -1;
+        transition: background-image 0.5s ease-in-out;
+    }
+    .bg-white, .card, nav.bg-white {
+        background-color: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(10px);
+    }
+    footer {
+        background-color: rgba(31, 41, 55, 0.95) !important;
+        backdrop-filter: blur(5px);
+    }
+    /* 强制所有文字清晰可见 - 使用最高优先级 */
+    .container {
+        background: rgba(255,255,255,0.95) !important;
+        padding: 30px;
+        border-radius: 15px;
+    }
+    .container * {
+        color: #000000 !important;
+    }
+    .container .text-muted {
+        color: #666666 !important;
+    }
+    .container .text-primary {
+        color: #007bff !important;
+    }
+    .container .text-warning {
+        color: #ffc107 !important;
+    }
+    .container .breadcrumb-item a {
+        color: #007bff !important;
+    }
+    .container .breadcrumb-item.active {
+        color: #666666 !important;
+    }
+    .container .badge.bg-primary {
+        color: white !important;
+    }
+    .container .badge.bg-success {
+        color: white !important;
+    }
+    .container .badge.bg-danger {
+        color: white !important;
+    }
+    .container .badge.bg-secondary {
+        color: white !important;
+    }
+    .container .btn {
+        color: inherit !important;
+    }
+    .container .btn-primary {
+        color: white !important;
+    }
+    .container .btn-outline-primary {
+        color: #007bff !important;
+    }
+    .container hr {
+        border-color: #dee2e6 !important;
+    }
+</style>
+
+<!-- 背景切换按钮 -->
+<div class="position-fixed bottom-5 right-5" style="bottom: 20px; right: 20px; z-index: 1000;">
+    <button class="btn btn-light rounded-pill shadow-lg px-4 py-2" onclick="changeBackground()">
+        <i class="fas fa-image me-2"></i>切换背景
+    </button>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 收藏功能
+    async function toggleFavorite(destId) {
+        {% if current_user %}
+        try {
+            const checkResponse = await fetch('/api/favorite/check/' + destId);
+            const checkData = await checkResponse.json();
+
+            const action = checkData.is_favorite ? 'remove' : 'add';
+            const response = await fetch('/api/favorite/' + action, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dest_id: destId })
+            });
+
+            if (response.ok) {
+                location.reload();
+            }
+        } catch (e) {
+            console.error('收藏操作失败:', e);
+            alert('操作失败，请重试');
+        }
+        {% else %}
+        if (confirm('请先登录后再收藏')) {
+            window.location.href = '/login-page';
+        }
+        {% endif %}
+    }
+
+    // 分享功能
+    function shareDestination() {
+        if (navigator.share) {
+            navigator.share({
+                title: '{{ dest.name }}',
+                text: '{{ dest.description[:100] if dest.description else "" }}',
+                url: window.location.href
+            });
+        } else {
+            navigator.clipboard.writeText(window.location.href).then(function() {
+                alert('链接已复制到剪贴板！');
+            });
+        }
+    }
+
+    // ==================== 背景图片管理 ====================
+    function changeBackground() {
+        fetch('/api/random-background?t=' + Date.now())
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    var style = document.getElementById('bg-style');
+                    if (!style) {
+                        style = document.createElement('style');
+                        style.id = 'bg-style';
+                        document.head.appendChild(style);
+                    }
+                    style.textContent = 'body::before { background-image: url("' + data.image + '") !important; }';
+                    showToast('✨ ' + data.name + ' · ' + data.location);
+                }
+            })
+            .catch(function(error) { console.error('切换背景失败:', error); });
+    }
+
+    function showToast(message) {
+        var toast = document.createElement('div');
+        toast.className = 'position-fixed top-5 end-5 bg-dark bg-opacity-75 text-white px-4 py-2 rounded-pill shadow';
+        toast.style.top = '80px';
+        toast.style.right = '20px';
+        toast.style.zIndex = '1050';
+        toast.style.animation = 'fadeInOut 3s ease';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(function() { toast.remove(); }, 3000);
+    }
+
+    // 添加动画样式
+    var animStyle = document.createElement('style');
+    animStyle.textContent = '@keyframes fadeInOut { 0% { opacity: 0; transform: translateY(-10px); } 10% { opacity: 1; transform: translateY(0); } 90% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-10px); } }';
+    document.head.appendChild(animStyle);
+
+    // ==================== 周边推荐功能 ====================
+    var currentCategory = 'all';
+    var currentRadius = 3000;
+    var currentSort = 'distance';
+
+    // POI分类图标映射
+    var poiIcons = {
+        'hotel': 'bi-building',
+        'restaurant': 'bi-cup-hot',
+        'parking': 'bi-p-circle',
+        'atm': 'bi-bank',
+        'gas_station': 'bi-fuel-pump',
+        'pharmacy': 'bi-capsule',
+        'default': 'bi-geo-alt'
+    };
+
+    // 加载周边POI数据
+    function loadNearbyPOI() {
+        // 从隐藏的data属性获取坐标
+        var destElement = document.querySelector('[data-dest-id]');
+        var destLat = destElement ? parseFloat(destElement.dataset.latitude) : null;
+        var destLng = destElement ? parseFloat(destElement.dataset.longitude) : null;
+
+        if (!destLat || !destLng || isNaN(destLat) || isNaN(destLng)) {
+            document.getElementById('nearby-poi-list').innerHTML = '<div class="text-center py-4"><i class="bi bi-geo-alt text-muted" style="font-size: 2rem;"></i><p class="text-muted mt-2">该景点暂无坐标信息，无法获取周边设施</p></div>';
+            return;
+        }
+
+        var params = new URLSearchParams({
+            latitude: destLat,
+            longitude: destLng,
+            category: currentCategory,
+            radius: currentRadius,
+            sort_by: currentSort,
+            limit: 20
+        });
+
+        fetch('/api/nearby/search?' + params.toString())
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    renderNearbyPOI(data.nearby, data.source);
+                } else {
+                    console.error('加载周边数据失败:', data.error);
+                    renderNearbyPOI([], 'error');
+                }
+            })
+            .catch(function(error) {
+                console.error('加载周边数据错误:', error);
+                renderNearbyPOI([], 'error');
+            });
+    }
+
+    // 渲染周边POI列表
+    function renderNearbyPOI(pois, source) {
+        var container = document.getElementById('nearby-poi-list');
+
+        if (pois.length === 0) {
+            container.innerHTML = '<div class="text-center py-4"><i class="bi bi-search text-muted" style="font-size: 2rem;"></i><p class="text-muted mt-2">在该范围内暂无周边设施</p></div>';
+            return;
+        }
+
+        var html = '<div class="list-group list-group-flush">';
+
+        pois.forEach(function(poi) {
+            var icon = poiIcons[poi.category] || poiIcons['default'];
+            var distanceText = poi.distance_text || (poi.distance < 1000 ? poi.distance + '米' : (poi.distance / 1000).toFixed(1) + '公里');
+
+            html += '<div class="list-group-item px-0">';
+            html += '<div class="d-flex align-items-start">';
+            html += '<div class="bg-light rounded-circle p-2 me-3"><i class="bi ' + icon + ' text-primary"></i></div>';
+            html += '<div class="flex-grow-1">';
+            html += '<h6 class="mb-1">' + poi.name + '</h6>';
+            html += '<p class="mb-1 small text-muted"><i class="bi bi-geo-alt me-1"></i>' + (poi.address || '地址未知') + '</p>';
+            html += '<div class="d-flex align-items-center gap-3 small">';
+            html += '<span class="text-primary"><i class="bi bi-pin-map me-1"></i>' + distanceText + '</span>';
+
+            if (poi.rating) {
+                html += '<span class="text-warning"><i class="bi bi-star-fill me-1"></i>' + poi.rating + '</span>';
+            }
+
+            if (poi.price_level) {
+                var priceColor = poi.price_level === '经济' ? 'success' : (poi.price_level === '高档' ? 'danger' : 'secondary');
+                html += '<span class="text-' + priceColor + '">' + poi.price_level + '</span>';
+            }
+
+            if (poi.phone) {
+                html += '<a href="tel:' + poi.phone + '" class="text-decoration-none"><i class="bi bi-telephone me-1"></i>拨打</a>';
+            }
+
+            html += '</div></div></div></div>';
+        });
+
+        html += '</div>';
+
+        if (source === 'gaode_api') {
+            html += '<div class="text-center mt-3"><small class="text-muted"><i class="bi bi-info-circle me-1"></i>数据来源：高德地图</small></div>';
+        }
+
+        container.innerHTML = html;
+    }
+
+    // 初始化筛选按钮事件
+    function initNearbyFilters() {
+        // POI分类筛选
+        document.querySelectorAll('.nearby-filter').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.nearby-filter').forEach(function(b) {
+                    b.classList.remove('active', 'btn-primary');
+                    b.classList.add('btn-outline-primary');
+                });
+                this.classList.remove('btn-outline-primary');
+                this.classList.add('active', 'btn-primary');
+                currentCategory = this.getAttribute('data-category');
+                loadNearbyPOI();
+            });
+        });
+
+        // 搜索半径选择
+        document.querySelectorAll('input[name="radius"]').forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                currentRadius = parseInt(this.value);
+                loadNearbyPOI();
+            });
+        });
+
+        // 排序方式选择
+        document.getElementById('sort-selector').addEventListener('change', function() {
+            currentSort = this.value;
+            loadNearbyPOI();
+        });
+    }
+
+    // ==================== 评论预览功能 ====================
+    function loadReviewsPreview() {
+        fetch('/api/reviews/{{ dest.id }}?page=1&per_page=3')
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success && data.reviews.length > 0) {
+                    var previewDiv = document.getElementById('reviews-preview');
+                    var html = '';
+
+                    data.reviews.slice(0, 2).forEach(function(review) {
+                        var stars = '';
+                        for (var i = 0; i < Math.floor(review.rating); i++) {
+                            stars += '★';
+                        }
+                        if (review.rating % 1 >= 0.5) stars += '½';
+
+                        html += '<div class="mb-3 pb-2 border-bottom">';
+                        html += '<div class="d-flex align-items-center mb-1">';
+                        html += '<div class="bg-' + (review.avatar_color || 'primary') + ' text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 30px; height: 30px; font-size: 0.8rem;">' + review.username[0].toUpperCase() + '</div>';
+                        html += '<span class="fw-medium small">' + review.username + '</span>';
+                        html += '<span class="ms-auto text-warning small">' + stars + '</span>';
+                        html += '</div>';
+                        html += '<p class="small text-muted mb-0">' + review.content.substring(0, 50) + (review.content.length > 50 ? '...' : '') + '</p>';
+                        html += '<small class="text-muted">' + review.created_at + '</small>';
+                        html += '</div>';
+                    });
+
+                    if (data.reviews.length > 2) {
+                        html += '<div class="text-center"><small class="text-muted">等 ' + data.total + ' 条评论</small></div>';
+                    }
+
+                    previewDiv.innerHTML = html;
+                } else {
+                    document.getElementById('reviews-preview').innerHTML = '<div class="text-center py-3"><i class="bi bi-chat-dots display-6 text-muted"></i><p class="text-muted mt-2">暂无评论，成为第一个评论的人吧！</p></div>';
+                }
+            })
+            .catch(function(error) {
+                console.error('加载评论失败:', error);
+                document.getElementById('reviews-preview').innerHTML = '<div class="text-center py-3"><i class="bi bi-exclamation-circle text-danger"></i><p class="text-muted mt-2">加载评论失败</p></div>';
+            });
+    }
+
+    // ==================== 页面初始化 ====================
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('当前背景图片: {{ background_image }}');
+        loadReviewsPreview();
+        initNearbyFilters();
+        loadNearbyPOI();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,60 @@
+<!-- templates/qq_login.html -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QQ登录 - 智能旅游助手</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body class="bg-gradient-to-r from-purple-400 to-pink-500 min-h-screen flex items-center justify-center">
+    <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-blue-500 rounded-full mb-4">
+                <i class="fab fa-qq text-white text-4xl"></i>
+            </div>
+            <h2 class="text-3xl font-bold text-gray-800">QQ登录</h2>
+            <p class="text-gray-500 mt-2">请使用手机QQ扫描二维码</p>
+        </div>
+
+        <div class="flex justify-center mb-6">
+            <img src="{{ qr_code }}" alt="QQ登录二维码" class="w-64 h-64 border-2 border-gray-200 rounded-lg">
+        </div>
+
+        <div class="text-center text-gray-600">
+            <p class="mb-2">1. 打开手机QQ</p>
+            <p class="mb-2">2. 点击右上角"+"号，选择"扫一扫"</p>
+            <p class="mb-4">3. 扫描二维码确认登录</p>
+        </div>
+
+        <div class="text-center mt-6 pt-4 border-t border-gray-200">
+            <a href="/login-page" class="text-purple-600 hover:text-purple-800">
+                <i class="fas fa-arrow-left mr-1"></i>返回登录页面
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // 轮询检查登录状态
+        const state = "{{ state }}";
+        let checkCount = 0;
+
+        function checkLoginStatus() {
+            fetch(`/api/qq/check_login?state=${state}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'logged_in') {
+                        window.location.href = '/';
+                    } else if (checkCount < 60) {  // 最多检查60次（2分钟）
+                        checkCount++;
+                        setTimeout(checkLoginStatus, 2000);
+                    }
+                });
+        }
+
+        // 开始轮询
+        setTimeout(checkLoginStatus, 2000);
+    </script>
+</body>
+</html>

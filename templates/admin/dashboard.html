@@ -1,0 +1,239 @@
+{% extends 'admin/layout.html' %}
+
+{% block page_title %}仪表盘{% endblock %}
+
+{% block content %}
+<!-- 统计卡片 -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                <i class="fas fa-map-marked-alt"></i>
+            </div>
+            <h3 class="mb-1">{{ total_destinations }}</h3>
+            <p class="text-muted mb-0">景点总数</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-success bg-opacity-10 text-success">
+                <i class="fas fa-users"></i>
+            </div>
+            <h3 class="mb-1">{{ total_users }}</h3>
+            <p class="text-muted mb-0">用户总数</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+                <i class="fas fa-star"></i>
+            </div>
+            <h3 class="mb-1">{{ total_reviews }}</h3>
+            <p class="text-muted mb-0">评论总数</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-danger bg-opacity-10 text-danger">
+                <i class="fas fa-user-cog"></i>
+            </div>
+            <h3 class="mb-1">{{ total_admins }}</h3>
+            <p class="text-muted mb-0">管理员数</p>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 最近添加的景点 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>最近添加的景点</h6>
+            </div>
+            <div class="card-body p-0">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>景点名称</th>
+                            <th>城市</th>
+                            <th>评分</th>
+                            <th>添加时间</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dest in recent_destinations %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-primary bg-opacity-10 rounded p-2 me-2">
+                                        <i class="fas fa-image text-primary"></i>
+                                    </div>
+                                    <span>{{ dest.name }}</span>
+                                </div>
+                            </td>
+                            <td>{{ dest.city }}</td>
+                            <td>
+                                <span class="badge bg-warning text-dark">
+                                    <i class="fas fa-star me-1"></i>{{ dest.rating }}
+                                </span>
+                            </td>
+                            <td class="text-muted">{{ dest.created_at.strftime('%m-%d %H:%M') if dest.created_at else '未知' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer bg-white">
+                <a href="{{ url_for('admin_destinations') }}" class="text-primary text-decoration-none">
+                    查看所有景点 <i class="fas fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 最近注册的用户 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="fas fa-user-plus me-2"></i>最近注册的用户</h6>
+            </div>
+            <div class="card-body p-0">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>用户名</th>
+                            <th>邮箱</th>
+                            <th>注册时间</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in recent_users %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
+                                        <span class="text-success">{{ user.username[0]|upper }}</span>
+                                    </div>
+                                    <span>{{ user.username }}</span>
+                                </div>
+                            </td>
+                            <td>{{ user.email or '未设置' }}</td>
+                            <td class="text-muted">{{ user.created_at.strftime('%m-%d %H:%M') if user.created_at else '未知' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer bg-white">
+                <a href="{{ url_for('admin_users') }}" class="text-primary text-decoration-none">
+                    查看所有用户 <i class="fas fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 热门景点 -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="fas fa-fire text-danger me-2"></i>热门景点 TOP 5</h6>
+            </div>
+            <div class="card-body p-0">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>排名</th>
+                            <th>景点名称</th>
+                            <th>城市</th>
+                            <th>分类</th>
+                            <th>评分</th>
+                            <th>人气值</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dest in hot_destinations %}
+                        <tr>
+                            <td>
+  {% if loop.index <= 3 %}
+    <span class="badge
+          {% if loop.index == 1 %}bg-warning
+          {% elif loop.index == 2 %}bg-secondary
+          {% else %}bg-danger{% endif %}">
+      {{ loop.index }}
+    </span>
+  {% else %}
+    <span class="badge bg-light text-dark">{{ loop.index }}</span>
+  {% endif %}
+</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-info bg-opacity-10 rounded p-2 me-2">
+                                        <i class="fas fa-map-pin text-info"></i>
+                                    </div>
+                                    <span class="fw-medium">{{ dest.name }}</span>
+                                </div>
+                            </td>
+                            <td>{{ dest.city }}</td>
+                            <td><span class="badge bg-light text-dark">{{ dest.category }}</span></td>
+                            <td>
+                                <span class="text-warning">
+                                    <i class="fas fa-star"></i>
+                                </span>
+                                {{ dest.rating }}
+                            </td>
+                            <td>
+                                <div class="progress" style="width: 100px; height: 8px;">
+                                    <div class="progress-bar bg-primary" style="width: {{ (dest.popularity_score / 100 * 100)|round }}%"></div>
+                                </div>
+                                <small class="text-muted">{{ dest.popularity_score|round }}</small>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 快速操作 -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="fas fa-bolt me-2"></i>快速操作</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <a href="{{ url_for('admin_destinations') }}" class="btn btn-outline-primary w-100 py-3">
+                            <i class="fas fa-plus fa-2x mb-2 d-block"></i>
+                            添加景点
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ url_for('admin_users') }}" class="btn btn-outline-success w-100 py-3">
+                            <i class="fas fa-users fa-2x mb-2 d-block"></i>
+                            用户管理
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ url_for('admin_reviews') }}" class="btn btn-outline-warning w-100 py-3">
+                            <i class="fas fa-comments fa-2x mb-2 d-block"></i>
+                            评论审核
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ url_for('admin_settings') }}" class="btn btn-outline-secondary w-100 py-3">
+                            <i class="fas fa-cog fa-2x mb-2 d-block"></i>
+                            系统设置
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

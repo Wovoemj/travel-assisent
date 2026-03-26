@@ -1,0 +1,33 @@
+<!-- 在 <head> 中添加视口设置 -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+
+<!-- 添加响应式CSS -->
+<style>
+@media (max-width: 768px) {
+    /* 移动端样式 */
+    .card {
+        margin: 10px;
+    }
+
+    .navbar-top {
+        padding: 0.5rem;
+    }
+
+    .stat-card h3 {
+        font-size: 1.2rem;
+    }
+
+    /* 表格改为卡片式布局 */
+    .table-responsive {
+        overflow-x: auto;
+    }
+
+    /* 隐藏非必要列 */
+    @media (max-width: 576px) {
+        .table td:nth-child(3),
+        .table th:nth-child(3) {
+            display: none;
+        }
+    }
+}
+</style>

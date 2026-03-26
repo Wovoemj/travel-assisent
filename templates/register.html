@@ -1,0 +1,689 @@
+<!-- templates/register.html -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 - 智能旅游助手</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            transition: background-image 0.5s ease;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 1;
+            pointer-events: none;
+        }
+        .content-wrapper {
+            position: relative;
+            z-index: 2;
+        }
+        .register-card {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 32px;
+            box-shadow: 0 30px 60px rgba(0,0,0,1);
+            width: 100%;
+            max-width: 600px;
+            padding: 3rem;
+        }
+        .tab-active {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            font-weight: 600;
+        }
+        .tab-inactive {
+            color: #9ca3af;
+            font-weight: 500;
+        }
+        .input-field {
+            transition: all 0.3s ease;
+            border: 2px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 1rem 1.25rem;
+            font-size: 1rem;
+            width: 100%;
+            background: white;
+        }
+        .input-field:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            outline: none;
+        }
+        .input-group {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+        .input-icon {
+            position: absolute;
+            right: 1.25rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            font-size: 1.25rem;
+        }
+        .social-btn {
+            transition: all 0.3s ease;
+            border-radius: 20px;
+            padding: 1rem;
+            background: #f9fafb;
+            border: 2px solid #f3f4f6;
+        }
+        .social-btn:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+            border-color: transparent;
+        }
+        .code-btn {
+            transition: all 0.3s ease;
+            border-radius: 16px;
+            padding: 1rem 1.5rem;
+            background: #f3f4f6;
+            color: #4b5563;
+            font-weight: 500;
+            white-space: nowrap;
+            border: 2px solid transparent;
+        }
+        .code-btn:hover:not(:disabled) {
+            background: #e5e7eb;
+            transform: translateY(-2px);
+        }
+        .code-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .register-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            padding: 1.2rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: white;
+            width: 100%;
+            border: none;
+            transition: all 0.3s ease;
+            margin-top: 1.5rem;
+        }
+        .register-btn:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(102, 126, 234, 0.4);
+        }
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: #9ca3af;
+            margin: 2rem 0;
+        }
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .divider span {
+            padding: 0 1rem;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 500;
+            margin-bottom: 2rem;
+            padding: 0.75rem 1.5rem;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50px;
+            transition: all 0.3s ease;
+        }
+        .back-link:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateX(-5px);
+        }
+        .location-badge {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            font-size: 0.95rem;
+            border: 1px solid rgba(255,255,255,0.2);
+            z-index: 3;
+            pointer-events: none;
+        }
+        .refresh-bg {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            font-size: 0.95rem;
+            border: 1px solid rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 3;
+        }
+        .refresh-bg:hover {
+            background: rgba(0,0,0,0.7);
+            transform: scale(1.05);
+        }
+        .footer-text {
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .checkbox-custom {
+            width: 1.2rem;
+            height: 1.2rem;
+            border: 2px solid #d1d5db;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .checkbox-custom:checked {
+            background-color: #667eea;
+            border-color: #667eea;
+        }
+        .terms-link {
+            color: #667eea;
+            font-weight: 600;
+            text-decoration: none;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+        .terms-link:hover {
+            border-bottom-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="content-wrapper min-h-screen flex items-center justify-center p-6">
+        <div class="w-full max-w-2xl">
+            <!-- 返回首页链接 -->
+            <a href="/" class="back-link">
+                <i class="fas fa-arrow-left mr-3 text-lg"></i> 返回首页
+            </a>
+
+            <!-- 注册卡片 -->
+            <div class="register-card">
+                <!-- Logo和标题 -->
+                <div class="text-center mb-10">
+                    <div class="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-r from-purple-500 to-pink-500 rounded-3xl mb-6 shadow-xl">
+                        <i class="fas fa-user-plus text-white text-4xl"></i>
+                    </div>
+                    <h2 class="text-4xl font-bold text-gray-800 mb-3">创建账号</h2>
+                    <p class="text-gray-500 text-lg">加入智能旅游助手，开启精彩旅程</p>
+                </div>
+
+                <!-- 注册方式切换标签 -->
+                <div class="flex border-b-2 border-gray-100 mb-8">
+                    <button id="phoneTab" class="flex-1 py-3 text-center text-lg tab-active" onclick="switchTab('phone')">
+                        手机号注册
+                    </button>
+                    <button id="emailTab" class="flex-1 py-3 text-center text-lg tab-inactive hover:text-gray-700" onclick="switchTab('email')">
+                        邮箱注册
+                    </button>
+                </div>
+
+                <!-- 手机号注册表单 -->
+                <form id="phoneRegisterForm" class="space-y-2">
+                    <div class="input-group">
+                        <input type="tel" id="phone" name="phone"
+                               class="input-field"
+                               placeholder="手机号"
+                               value="17792088167">
+                        <i class="fas fa-mobile-alt input-icon"></i>
+                    </div>
+
+                    <div class="flex space-x-3">
+                        <div class="flex-1 input-group">
+                            <input type="text" id="code" name="code"
+                                   class="input-field"
+                                   placeholder="验证码">
+                            <i class="fas fa-shield-alt input-icon"></i>
+                        </div>
+                        <button type="button" id="sendCodeBtn" onclick="sendVerificationCode()"
+                                class="code-btn">
+                            获取验证码
+                        </button>
+                    </div>
+
+                    <div class="input-group">
+                        <input type="text" id="username" name="username"
+                               class="input-field"
+                               placeholder="用户名">
+                        <i class="fas fa-user input-icon"></i>
+                    </div>
+
+                    <div class="input-group">
+                        <input type="password" id="password" name="password"
+                               class="input-field"
+                               placeholder="密码 (至少6位)">
+                        <i class="fas fa-lock input-icon"></i>
+                    </div>
+
+                    <div class="input-group">
+                        <input type="password" id="confirm_password" name="confirm_password"
+                               class="input-field"
+                               placeholder="确认密码">
+                        <i class="fas fa-lock input-icon"></i>
+                    </div>
+
+                    <label class="flex items-center cursor-pointer mt-4">
+                        <input type="checkbox" id="agree" class="w-5 h-5 text-purple-600 border-2 border-gray-300 rounded-lg focus:ring-purple-500">
+                        <span class="ml-3 text-gray-600 text-base">
+                            我已阅读并同意
+                            <a href="#" class="terms-link">《用户协议》</a>
+                            和
+                            <a href="#" class="terms-link">《隐私政策》</a>
+                        </span>
+                    </label>
+
+                    <button type="submit" class="register-btn">
+                        注 册
+                    </button>
+                </form>
+
+                <!-- 邮箱注册表单（初始隐藏） -->
+                <form id="emailRegisterForm" class="space-y-2 hidden">
+                    <div class="input-group">
+                        <input type="email" id="email" name="email"
+                               class="input-field"
+                               placeholder="电子邮箱">
+                        <i class="fas fa-envelope input-icon"></i>
+                    </div>
+
+                    <div class="input-group">
+                        <input type="text" id="email_username" name="username"
+                               class="input-field"
+                               placeholder="用户名">
+                        <i class="fas fa-user input-icon"></i>
+                    </div>
+
+                    <div class="input-group">
+                        <input type="password" id="email_password" name="password"
+                               class="input-field"
+                               placeholder="密码 (至少6位)">
+                        <i class="fas fa-lock input-icon"></i>
+                    </div>
+
+                    <div class="input-group">
+                        <input type="password" id="email_confirm_password" name="confirm_password"
+                               class="input-field"
+                               placeholder="确认密码">
+                        <i class="fas fa-lock input-icon"></i>
+                    </div>
+
+                    <label class="flex items-center cursor-pointer mt-4">
+                        <input type="checkbox" id="email_agree" class="w-5 h-5 text-purple-600 border-2 border-gray-300 rounded-lg focus:ring-purple-500">
+                        <span class="ml-3 text-gray-600 text-base">
+                            我已阅读并同意
+                            <a href="#" class="terms-link">《用户协议》</a>
+                            和
+                            <a href="#" class="terms-link">《隐私政策》</a>
+                        </span>
+                    </label>
+
+                    <button type="submit" class="register-btn">
+                        注 册
+                    </button>
+                </form>
+
+                <!-- 消息提示框 -->
+                <div id="messageBox" class="mt-6 hidden">
+                    <div id="messageContent" class="px-6 py-4 rounded-2xl border-2 flex items-center">
+                        <i id="messageIcon" class="mr-3 text-xl"></i>
+                        <span id="messageText" class="text-base"></span>
+                    </div>
+                </div>
+
+                <!-- 社交注册 -->
+                <div class="divider">
+                    <span>使用社交账号注册</span>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <button onclick="socialRegister('wechat')" class="social-btn flex flex-col items-center">
+                        <i class="fab fa-weixin text-green-500 text-3xl mb-2"></i>
+                        <span class="text-sm font-medium text-gray-600">微信</span>
+                    </button>
+                    <button onclick="socialRegister('qq')" class="social-btn flex flex-col items-center">
+                        <i class="fab fa-qq text-blue-500 text-3xl mb-2"></i>
+                        <span class="text-sm font-medium text-gray-600">QQ</span>
+                    </button>
+                    <button onclick="socialRegister('weibo')" class="social-btn flex flex-col items-center">
+                        <i class="fab fa-weibo text-red-500 text-3xl mb-2"></i>
+                        <span class="text-sm font-medium text-gray-600">微博</span>
+                    </button>
+                </div>
+
+                <!-- 登录链接 -->
+                <div class="text-center mt-8 pt-6 border-t-2 border-gray-100">
+                    <p class="text-gray-600 text-lg">
+                        已有账号？
+                        <a href="/login-page" class="text-purple-600 hover:text-purple-800 font-bold ml-2">
+                            立即登录 <i class="fas fa-arrow-right ml-1"></i>
+                        </a>
+                    </p>
+                </div>
+            </div>
+
+            <!-- 底部信息 -->
+            <p class="text-center footer-text text-base mt-8">
+                © 2024 智能旅游助手. 保留所有权利.
+            </p>
+        </div>
+    </div>
+
+    <!-- 地点信息标签（由JS动态生成） -->
+    <!-- 切换背景按钮 -->
+    <div class="refresh-bg" onclick="refreshBackground()">
+        <i class="fas fa-sync-alt mr-2"></i> 切换背景
+    </div>
+
+    <script>
+        // ==================== 背景图片管理 ====================
+        let currentBgData = null;
+        let loadTimeout = null;
+
+        function loadBackgroundImage(bgData) {
+            if (loadTimeout) clearTimeout(loadTimeout);
+
+            const img = new Image();
+
+            img.onload = function() {
+                document.body.style.backgroundImage = `url('${bgData.image}')`;
+                document.body.style.backgroundSize = 'cover';
+                document.body.style.backgroundPosition = 'center';
+                document.body.style.backgroundAttachment = 'fixed';
+
+                updateLocationBadge(bgData.name, bgData.location);
+
+                currentBgData = bgData;
+                localStorage.setItem('lastBackground', JSON.stringify(bgData));
+            };
+
+            img.onerror = function() {
+                console.log('背景图片加载失败，使用渐变');
+                fallbackToGradient(bgData.name, bgData.location);
+            };
+
+            loadTimeout = setTimeout(function() {
+                if (!img.complete || img.naturalHeight === 0) {
+                    console.log('背景图片加载超时');
+                    fallbackToGradient(bgData.name, bgData.location);
+                }
+            }, 5000);
+
+            img.src = bgData.image;
+        }
+
+        function updateLocationBadge(name, location) {
+            let badge = document.querySelector('.location-badge');
+            if (!badge) {
+                badge = document.createElement('div');
+                badge.className = 'location-badge';
+                document.body.appendChild(badge);
+            }
+            badge.innerHTML = `<i class="fas fa-map-marker-alt mr-2"></i>${name} · ${location}`;
+        }
+
+        function fallbackToGradient(name, location) {
+            document.body.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            document.body.style.backgroundSize = 'cover';
+            if (name && location) {
+                updateLocationBadge(name, location);
+            } else {
+                const badge = document.querySelector('.location-badge');
+                if (badge) badge.remove();
+            }
+        }
+
+        function refreshBackground() {
+            const refreshBtn = document.querySelector('.refresh-bg i');
+            refreshBtn.classList.add('animate-spin');
+
+            fetch('/api/random-background')
+                .then(response => response.json())
+                .then(data => {
+                    loadBackgroundImage(data);
+                })
+                .catch(error => {
+                    console.error('获取背景失败:', error);
+                    fallbackToGradient();
+                })
+                .finally(() => {
+                    setTimeout(() => refreshBtn.classList.remove('animate-spin'), 500);
+                });
+        }
+
+        function initBackground() {
+            const saved = localStorage.getItem('lastBackground');
+            if (saved) {
+                try {
+                    const bgData = JSON.parse(saved);
+                    loadBackgroundImage(bgData);
+                    return;
+                } catch (e) {
+                    console.log('解析保存的背景失败');
+                }
+            }
+            refreshBackground();
+        }
+
+        // ==================== 注册功能 ====================
+        function switchTab(tab) {
+            const phoneTab = document.getElementById('phoneTab');
+            const emailTab = document.getElementById('emailTab');
+            const phoneForm = document.getElementById('phoneRegisterForm');
+            const emailForm = document.getElementById('emailRegisterForm');
+
+            if (tab === 'phone') {
+                phoneTab.className = 'flex-1 py-3 text-center text-lg tab-active';
+                emailTab.className = 'flex-1 py-3 text-center text-lg tab-inactive hover:text-gray-700';
+                phoneForm.classList.remove('hidden');
+                emailForm.classList.add('hidden');
+            } else {
+                emailTab.className = 'flex-1 py-3 text-center text-lg tab-active';
+                phoneTab.className = 'flex-1 py-3 text-center text-lg tab-inactive hover:text-gray-700';
+                emailForm.classList.remove('hidden');
+                phoneForm.classList.add('hidden');
+            }
+        }
+
+        let countdown = 60;
+        let timer = null;
+
+        function sendVerificationCode() {
+            const phone = document.getElementById('phone').value;
+            const sendBtn = document.getElementById('sendCodeBtn');
+
+            if (!phone || !/^1[3-9]\d{9}$/.test(phone)) {
+                showMessage('请输入正确的手机号', 'error');
+                return;
+            }
+
+            sendBtn.disabled = true;
+            countdown = 60;
+            sendBtn.textContent = `${countdown}秒后重试`;
+
+            timer = setInterval(() => {
+                countdown--;
+                sendBtn.textContent = `${countdown}秒后重试`;
+
+                if (countdown <= 0) {
+                    clearInterval(timer);
+                    sendBtn.disabled = false;
+                    sendBtn.textContent = '获取验证码';
+                }
+            }, 1000);
+
+            fetch('/api/send_code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(`验证码已发送：${data.debug_code}`, 'success');
+                    document.getElementById('code').value = data.debug_code;
+                } else {
+                    showMessage(data.error || '发送失败', 'error');
+                    clearInterval(timer);
+                    sendBtn.disabled = false;
+                    sendBtn.textContent = '获取验证码';
+                }
+            })
+            .catch(error => {
+                showMessage('网络错误，请重试', 'error');
+                clearInterval(timer);
+                sendBtn.disabled = false;
+                sendBtn.textContent = '获取验证码';
+            });
+        }
+
+        document.getElementById('phoneRegisterForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const phone = document.getElementById('phone').value;
+            const code = document.getElementById('code').value;
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const confirm = document.getElementById('confirm_password').value;
+            const agree = document.getElementById('agree').checked;
+
+            if (!agree) {
+                showMessage('请同意用户协议和隐私政策', 'error');
+                return;
+            }
+
+            if (password !== confirm) {
+                showMessage('两次输入的密码不一致', 'error');
+                return;
+            }
+
+            if (password.length < 6) {
+                showMessage('密码至少6个字符', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/register/phone', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, code, username, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage('注册成功！正在跳转到登录页...', 'success');
+                    setTimeout(() => window.location.href = '/login-page', 2000);
+                } else {
+                    showMessage(data.error || '注册失败', 'error');
+                }
+            } catch (error) {
+                showMessage('网络错误，请重试', 'error');
+            }
+        });
+
+        document.getElementById('emailRegisterForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value;
+            const username = document.getElementById('email_username').value;
+            const password = document.getElementById('email_password').value;
+            const confirm = document.getElementById('email_confirm_password').value;
+            const agree = document.getElementById('email_agree').checked;
+
+            if (!agree) {
+                showMessage('请同意用户协议和隐私政策', 'error');
+                return;
+            }
+
+            if (password !== confirm) {
+                showMessage('两次输入的密码不一致', 'error');
+                return;
+            }
+
+            if (password.length < 6) {
+                showMessage('密码至少6个字符', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password, confirm_password: confirm })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage('注册成功！正在跳转到登录页...', 'success');
+                    setTimeout(() => window.location.href = '/login-page', 2000);
+                } else {
+                    showMessage(data.error || '注册失败', 'error');
+                }
+            } catch (error) {
+                showMessage('网络错误，请重试', 'error');
+            }
+        });
+
+        function socialRegister(provider) {
+            showMessage(`正在使用${provider}登录...`, 'info');
+            window.location.href = `/auth/${provider}`;
+        }
+
+        function showMessage(message, type = 'info') {
+            const messageBox = document.getElementById('messageBox');
+            const messageContent = document.getElementById('messageContent');
+            const messageIcon = document.getElementById('messageIcon');
+            const messageText = document.getElementById('messageText');
+
+            messageBox.classList.remove('hidden');
+
+            if (type === 'success') {
+                messageContent.className = 'bg-green-50 border-2 border-green-200 text-green-600 px-6 py-4 rounded-2xl flex items-center';
+                messageIcon.className = 'fas fa-check-circle mr-3 text-xl';
+            } else if (type === 'error') {
+                messageContent.className = 'bg-red-50 border-2 border-red-200 text-red-600 px-6 py-4 rounded-2xl flex items-center';
+                messageIcon.className = 'fas fa-exclamation-circle mr-3 text-xl';
+            } else {
+                messageContent.className = 'bg-blue-50 border-2 border-blue-200 text-blue-600 px-6 py-4 rounded-2xl flex items-center';
+                messageIcon.className = 'fas fa-info-circle mr-3 text-xl';
+            }
+
+            messageText.textContent = message;
+
+            if (type !== 'info') {
+                setTimeout(() => messageBox.classList.add('hidden'), 3000);
+            }
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', initBackground);
+    </script>
+</body>
+</html>

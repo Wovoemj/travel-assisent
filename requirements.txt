@@ -1,0 +1,54 @@
+# 智能旅游助手 - Python依赖包
+# 用于云部署和本地开发
+
+# 核心框架
+Flask==2.3.3
+Flask-SQLAlchemy==3.0.5
+Flask-SocketIO==5.3.6
+Flask-Caching==2.1.0
+Flask-Compress==1.14
+
+# 数据库
+SQLAlchemy==2.0.23
+
+# WebSocket支持
+eventlet==0.33.3
+
+# HTTP请求
+requests==2.31.0
+
+# 中文拼音处理
+pypinyin==0.49.0
+
+# 密码加密
+Werkzeug==2.3.7
+
+# JSON处理（通常内置，但确保版本）
+# json - 内置模块
+
+# 日期时间处理
+python-dateutil==2.8.2
+
+# 图像处理（可选）
+Pillow==10.0.1
+
+# PDF生成（可选）
+reportlab==4.0.4
+
+# 生产环境服务器（可选）
+gunicorn==21.2.0
+
+# 环境变量管理（可选）
+python-dotenv==1.0.0
+
+# CORS支持（如果需要）
+flask-cors==4.0.0
+
+# 日志记录
+colorlog==6.7.0
+
+# 数据验证
+marshmallow==3.20.1
+
+# 缓存序列化
+msgpack==1.0.7
