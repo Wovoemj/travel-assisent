@@ -1480,5 +1480,23 @@
 
     <!-- 性能优化脚本 -->
     <script src="{{ url_for('static', filename='js/performance.js') }}"></script>
+
+    <!-- SocketIO 实时更新 -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+    (function() {
+        var socket = io();
+        socket.on('data_changed', function(data) {
+            if (data.type === 'destination') {
+                // 景点数据变更，自动刷新页面
+                console.log('[实时更新] 景点数据变更:', data.action, data.name);
+                setTimeout(function() { location.reload(); }, 1000);
+            }
+        });
+        socket.on('connect', function() {
+            console.log('[实时更新] 已连接到服务器');
+        });
+    })();
+    </script>
 </body>
 </html>

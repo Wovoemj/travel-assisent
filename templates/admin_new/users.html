@@ -1,0 +1,172 @@
+{% extends "admin_new/base.html" %}
+{% block title %}用户管理{% endblock %}
+{% block page_title %}用户管理{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="search-box">
+        <i class="bi bi-search"></i>
+        <input type="text" id="searchInput" class="form-control" placeholder="搜索用户名/邮箱..." style="width:300px;padding-left:36px">
+    </div>
+</div>
+
+<div class="data-table">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>用户名</th>
+                <th>邮箱</th>
+                <th>手机</th>
+                <th>注册时间</th>
+                <th>最后登录</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody id="userTableBody">
+            {% for user in users %}
+            <tr data-id="{{ user.id }}">
+                <td>{{ user.id }}</td>
+                <td><i class="bi bi-person-circle me-1 text-muted"></i> {{ user.username }}</td>
+                <td>{{ user.email or '-' }}</td>
+                <td>{{ user.phone or '-' }}</td>
+                <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '-' }}</td>
+                <td>{{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else '从未登录' }}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="editUser({{ user.id }})">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteUser({{ user.id }})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not users %}
+            <tr><td colspan="7" class="text-center text-muted py-4">暂无用户数据</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+{% if pagination.pages > 1 %}
+<nav class="mt-3 d-flex justify-content-center">
+    <ul class="pagination">
+        {% if pagination.has_prev %}
+        <li class="page-item"><a class="page-link" href="?page={{ pagination.prev_num }}&search={{ search }}">上一页</a></li>
+        {% endif %}
+        {% for p in pagination.iter_pages() %}
+            {% if p %}
+            <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                <a class="page-link" href="?page={{ p }}&search={{ search }}">{{ p }}</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+        {% endfor %}
+        {% if pagination.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ pagination.next_num }}&search={{ search }}">下一页</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- Edit Modal -->
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑用户</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editUserId">
+                <div class="mb-3">
+                    <label class="form-label">用户名</label>
+                    <input type="text" class="form-control" id="editUsername">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">邮箱</label>
+                    <input type="email" class="form-control" id="editEmail">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">手机</label>
+                    <input type="text" class="form-control" id="editPhone">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveUser()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const searchInput = document.getElementById('searchInput');
+let searchTimeout;
+searchInput.addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        window.location.href = `?search=${encodeURIComponent(this.value)}`;
+    }, 500);
+});
+searchInput.value = '{{ search }}';
+
+function editUser(id) {
+    fetch(`/api/admin/users/${id}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const u = data.data;
+                document.getElementById('editUserId').value = u.id;
+                document.getElementById('editUsername').value = u.username;
+                document.getElementById('editEmail').value = u.email || '';
+                document.getElementById('editPhone').value = u.phone || '';
+                new bootstrap.Modal(document.getElementById('userModal')).show();
+            }
+        });
+}
+
+function saveUser() {
+    const id = document.getElementById('editUserId').value;
+    const data = {
+        username: document.getElementById('editUsername').value,
+        email: document.getElementById('editEmail').value,
+        phone: document.getElementById('editPhone').value
+    };
+    fetch(`/api/admin/users/${id}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            showToast(res.message);
+            bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
+            setTimeout(() => location.reload(), 500);
+        } else {
+            showToast(res.error || '更新失败', 'danger');
+        }
+    });
+}
+
+function deleteUser(id) {
+    if (!confirm('确定要删除该用户吗？此操作不可恢复！')) return;
+    fetch(`/api/admin/users/${id}`, {method: 'DELETE'})
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                showToast(res.message);
+                document.querySelector(`tr[data-id="${id}"]`).remove();
+            } else {
+                showToast(res.error || '删除失败', 'danger');
+            }
+        });
+}
+</script>
+{% endblock %}

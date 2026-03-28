@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员登录 - 智能旅游助手</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            margin: 0; min-height: 100vh;
+            background: linear-gradient(135deg, #1e1b4b 0%, #4f46e5 50%, #818cf8 100%);
+            display: flex; align-items: center; justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .login-card {
+            background: #fff; border-radius: 16px; padding: 40px;
+            width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .login-card .brand {
+            text-align: center; margin-bottom: 32px;
+        }
+        .login-card .brand i {
+            font-size: 40px; color: #4f46e5; display: block; margin-bottom: 12px;
+        }
+        .login-card .brand h2 { font-size: 22px; font-weight: 700; color: #1e293b; margin: 0; }
+        .login-card .brand p { color: #94a3b8; font-size: 14px; margin-top: 4px; }
+        .form-control {
+            border-radius: 8px; padding: 10px 14px; border: 1px solid #e2e8f0;
+            font-size: 14px;
+        }
+        .form-control:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+        .btn-login {
+            width: 100%; padding: 12px; border-radius: 8px;
+            background: #4f46e5; border: none; color: #fff;
+            font-size: 15px; font-weight: 600; cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-login:hover { background: #4338ca; }
+        .alert { border-radius: 8px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <div class="brand">
+            <i class="bi bi-compass"></i>
+            <h2>管理后台</h2>
+            <p>智能旅游助手管理系统</p>
+        </div>
+        {% if error %}
+        <div class="alert alert-danger" role="alert">
+            <i class="bi bi-exclamation-circle me-1"></i> {{ error }}
+        </div>
+        {% endif %}
+        <form method="POST" action="{{ url_for('admin_login') }}">
+            <div class="mb-3">
+                <label class="form-label" style="font-size:14px;color:#64748b">用户名</label>
+                <div class="input-group">
+                    <span class="input-group-text" style="border-radius:8px 0 0 8px;border:1px solid #e2e8f0;border-right:none;background:#f8fafc">
+                        <i class="bi bi-person" style="color:#94a3b8"></i>
+                    </span>
+                    <input type="text" name="username" class="form-control" style="border-radius:0 8px 8px 0" placeholder="请输入用户名" required autofocus>
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="form-label" style="font-size:14px;color:#64748b">密码</label>
+                <div class="input-group">
+                    <span class="input-group-text" style="border-radius:8px 0 0 8px;border:1px solid #e2e8f0;border-right:none;background:#f8fafc">
+                        <i class="bi bi-lock" style="color:#94a3b8"></i>
+                    </span>
+                    <input type="password" name="password" class="form-control" style="border-radius:0 8px 8px 0" placeholder="请输入密码" required>
+                </div>
+            </div>
+            <button type="submit" class="btn-login">登 录</button>
+        </form>
+    </div>
+</body>
+</html>

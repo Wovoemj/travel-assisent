@@ -449,15 +449,12 @@ class Conversation(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 
 
-# ==================== 管理员模型 ====================
+# ==================== 管理员模型（简化版） ====================
 class Admin(db.Model):
-    """管理员模型"""
+    """管理员模型 - 简化版"""
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
-    email = db.Column(db.String(120), unique=True)
-    role = db.Column(db.String(20), default='admin')  # admin, super_admin
-    last_login = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     def set_password(self, password):
@@ -468,11 +465,8 @@ class Admin(db.Model):
 
     def to_dict(self):
         return {
-            'id': self.id or 0,
-            'username': self.username or '',
-            'email': self.email or '',
-            'role': self.role or 'admin',
-            'last_login': self.last_login.strftime('%Y-%m-%d %H:%M') if self.last_login else '',
+            'id': self.id,
+            'username': self.username,
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else ''
         }
 
@@ -807,14 +801,6 @@ def login_required(f):
     return decorated_function
 
 
-def admin_login_required(f):
-    """管理员登录验证装饰器"""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'admin_id' not in session:
-            return redirect(url_for('admin_login'))
-        return f(*args, **kwargs)
-    return decorated_function
 
 
 def get_wiki_attraction_image(attraction_name: str, city: str = None, usage: str = 'dest_detail') -> str:
@@ -5441,27 +5427,6 @@ def api_user_behavior():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/cache/clear', methods=['POST'])
-@admin_login_required
-def api_cache_clear():
-    """清理缓存API"""
-    try:
-        global _reviews_cache
-
-        # 清理评论缓存
-        cache_size = len(_reviews_cache)
-        _reviews_cache.clear()
-
-        return jsonify({
-            'success': True,
-            'message': f'缓存清理完成，清理了 {cache_size} 个评论缓存'
-        })
-
-    except Exception as e:
-        print(f"缓存清理错误: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
 @app.route('/api/system/health', methods=['GET'])
 def api_system_health():
     """系统健康检查API"""
@@ -7292,500 +7257,7 @@ def api_nearby_destination(dest_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-# ==================== 后台管理增强功能 ====================
-
-@app.route('/api/admin/analytics/overview', methods=['GET'])
-@admin_login_required
-def api_admin_analytics_overview():
-    """管理后台数据概览API"""
-    try:
-        # 基础统计
-        total_destinations = Destination.query.count()
-        total_users = User.query.count()
-        total_reviews = sum([len(v) for v in _reviews_cache.values()]) if _reviews_cache else 0
-
-        # 用户统计
-        today = datetime.now().date()
-        new_users_today = User.query.filter(
-            func.date(User.created_at) == today
-        ).count()
-
-        active_users_today = User.query.filter(
-            func.date(User.last_login) == today
-        ).count()
-
-        # 景点统计
-        avg_rating = db.session.query(func.avg(Destination.rating)).scalar() or 0
-        top_rated = Destination.query.order_by(Destination.rating.desc()).limit(5).all()
-
-        # 分类分布
-        category_distribution = db.session.query(
-            Destination.category,
-            func.count(Destination.id).label('count')
-        ).group_by(Destination.category).all()
-
-        # 省份分布
-        province_distribution = db.session.query(
-            Destination.province,
-            func.count(Destination.id).label('count')
-        ).group_by(Destination.province).limit(10).all()
-
-        # 评分分布
-        rating_distribution = []
-        for i in range(1, 6):
-            count = Destination.query.filter(
-                Destination.rating >= i,
-                Destination.rating < i + 1
-            ).count()
-            rating_distribution.append({
-                'rating': i,
-                'count': count
-            })
-
-        analytics_data = {
-            'overview': {
-                'total_destinations': total_destinations,
-                'total_users': total_users,
-                'total_reviews': total_reviews,
-                'avg_rating': round(avg_rating, 2)
-            },
-            'users': {
-                'new_today': new_users_today,
-                'active_today': active_users_today,
-                'growth_rate': round((new_users_today / max(total_users, 1)) * 100, 2)
-            },
-            'destinations': {
-                'top_rated': [{'name': d.name, 'rating': d.rating} for d in top_rated],
-                'category_distribution': [{'category': cat, 'count': count} for cat, count in category_distribution],
-                'province_distribution': [{'province': prov, 'count': count} for prov, count in province_distribution],
-                'rating_distribution': rating_distribution
-            }
-        }
-
-        return jsonify({
-            'success': True,
-            'analytics': analytics_data
-        })
-
-    except Exception as e:
-        print(f"数据分析错误: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@app.route('/api/admin/analytics/user-behavior', methods=['GET'])
-@admin_login_required
-def api_admin_user_behavior():
-    """用户行为分析API"""
-    try:
-        days = request.args.get('days', 30, type=int)
-        start_date = datetime.now() - timedelta(days=days)
-
-        # 用户注册趋势
-        registration_trend = []
-        for i in range(days):
-            date = start_date + timedelta(days=i)
-            count = User.query.filter(
-                func.date(User.created_at) == date.date()
-            ).count()
-            registration_trend.append({
-                'date': date.strftime('%Y-%m-%d'),
-                'count': count
-            })
-
-        # 用户活跃度分析
-        active_users = User.query.filter(
-            User.last_login >= start_date
-        ).count()
-
-        # 收藏行为分析
-        users_with_favorites = User.query.filter(
-            User.favorites != '[]',
-            User.favorites.isnot(None)
-        ).count()
-
-        # 搜索行为分析
-        users_with_search = User.query.filter(
-            User.search_history != '[]',
-            User.search_history.isnot(None)
-        ).count()
-
-        # 热门搜索关键词（模拟）
-        hot_keywords = [
-            {'keyword': '故宫', 'count': random.randint(100, 500)},
-            {'keyword': '长城', 'count': random.randint(80, 400)},
-            {'keyword': '西湖', 'count': random.randint(60, 300)},
-            {'keyword': '兵马俑', 'count': random.randint(40, 200)},
-            {'keyword': '黄山', 'count': random.randint(30, 150)}
-        ]
-
-        behavior_data = {
-            'registration_trend': registration_trend,
-            'activity': {
-                'active_users': active_users,
-                'total_users': User.query.count(),
-                'activity_rate': round((active_users / max(User.query.count(), 1)) * 100, 2)
-            },
-            'engagement': {
-                'users_with_favorites': users_with_favorites,
-                'users_with_search': users_with_search,
-                'favorite_rate': round((users_with_favorites / max(User.query.count(), 1)) * 100, 2),
-                'search_rate': round((users_with_search / max(User.query.count(), 1)) * 100, 2)
-            },
-            'hot_keywords': hot_keywords
-        }
-
-        return jsonify({
-            'success': True,
-            'behavior': behavior_data
-        })
-
-    except Exception as e:
-        print(f"用户行为分析错误: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@app.route('/api/admin/analytics/content', methods=['GET'])
-@admin_login_required
-def api_admin_content_analytics():
-    """内容分析API"""
-    try:
-        # 景点质量分析
-        high_rated_destinations = Destination.query.filter(Destination.rating >= 4.5).count()
-        medium_rated_destinations = Destination.query.filter(
-            Destination.rating >= 3.5,
-            Destination.rating < 4.5
-        ).count()
-        low_rated_destinations = Destination.query.filter(Destination.rating < 3.5).count()
-
-        # 内容完整性分析
-        complete_destinations = Destination.query.filter(
-            Destination.description.isnot(None),
-            Destination.description != '',
-            Destination.address.isnot(None),
-            Destination.address != '',
-            Destination.opening_hours.isnot(None),
-            Destination.opening_hours != ''
-        ).count()
-
-        incomplete_destinations = Destination.query.count() - complete_destinations
-
-        # 图片覆盖率
-        destinations_with_images = Destination.query.filter(
-            Destination.cover_image.isnot(None),
-            Destination.cover_image != '',
-            ~Destination.cover_image.contains('placeholder')
-        ).count()
-
-        # 评论活跃度
-        destinations_with_reviews = len(_reviews_cache)
-
-        content_data = {
-            'quality_distribution': {
-                'high_rated': high_rated_destinations,
-                'medium_rated': medium_rated_destinations,
-                'low_rated': low_rated_destinations
-            },
-            'completeness': {
-                'complete': complete_destinations,
-                'incomplete': incomplete_destinations,
-                'completeness_rate': round((complete_destinations / max(Destination.query.count(), 1)) * 100, 2)
-            },
-            'media_coverage': {
-                'with_images': destinations_with_images,
-                'without_images': Destination.query.count() - destinations_with_images,
-                'image_coverage_rate': round((destinations_with_images / max(Destination.query.count(), 1)) * 100, 2)
-            },
-            'review_activity': {
-                'destinations_with_reviews': destinations_with_reviews,
-                'total_reviews': sum([len(v) for v in _reviews_cache.values()]) if _reviews_cache else 0,
-                'avg_reviews_per_destination': round(
-                    sum([len(v) for v in _reviews_cache.values()]) / max(destinations_with_reviews, 1), 2
-                ) if _reviews_cache else 0
-            }
-        }
-
-        return jsonify({
-            'success': True,
-            'content': content_data
-        })
-
-    except Exception as e:
-        print(f"内容分析错误: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@app.route('/api/admin/export/users', methods=['GET'])
-@admin_login_required
-def api_admin_export_users():
-    """导出用户数据API"""
-    try:
-        format_type = request.args.get('format', 'json')  # json, csv
-
-        users = User.query.all()
-        export_data = []
-
-        for user in users:
-            export_data.append({
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'phone': user.phone,
-                'created_at': user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user.created_at else '',
-                'last_login': user.last_login.strftime('%Y-%m-%d %H:%M:%S') if user.last_login else '',
-                'favorites_count': len(json.loads(user.favorites or '[]')),
-                'search_history_count': len(json.loads(user.search_history or '[]')),
-                'click_history_count': len(json.loads(user.click_history or '[]'))
-            })
-
-        if format_type == 'csv':
-            # 生成CSV格式
-            csv_content = "ID,用户名,邮箱,手机,注册时间,最后登录,收藏数,搜索记录数,点击记录数\n"
-            for data in export_data:
-                csv_content += f"{data['id']},{data['username']},{data['email']},{data['phone']},{data['created_at']},{data['last_login']},{data['favorites_count']},{data['search_history_count']},{data['click_history_count']}\n"
-
-            return jsonify({
-                'success': True,
-                'format': 'csv',
-                'data': csv_content,
-                'count': len(export_data)
-            })
-        else:
-            return jsonify({
-                'success': True,
-                'format': 'json',
-                'data': export_data,
-                'count': len(export_data)
-            })
-
-    except Exception as e:
-        print(f"导出用户数据错误: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@app.route('/api/admin/export/destinations', methods=['GET'])
-@admin_login_required
-def api_admin_export_destinations():
-    """导出景点数据API"""
-    try:
-        format_type = request.args.get('format', 'json')
-        category = request.args.get('category', '')
-        province = request.args.get('province', '')
-
-        query = Destination.query
-        if category:
-            query = query.filter(Destination.category == category)
-        if province:
-            query = query.filter(Destination.province == province)
-
-        destinations = query.all()
-        export_data = []
-
-        for dest in destinations:
-            export_data.append({
-                'id': dest.id,
-                'name': dest.name,
-                'city': dest.city,
-                'province': dest.province,
-                'category': dest.category,
-                'description': dest.description,
-                'price_range': dest.price_range,
-                'rating': dest.rating,
-                'review_count': dest.review_count,
-                'opening_hours': dest.opening_hours,
-                'address': dest.address,
-                'latitude': dest.latitude,
-                'longitude': dest.longitude,
-                'popularity_score': dest.popularity_score,
-                'is_open': dest.is_open,
-                'created_at': dest.created_at.strftime('%Y-%m-%d %H:%M:%S') if dest.created_at else ''
-            })
-
-        if format_type == 'csv':
-            csv_content = "ID,名称,城市,省份,分类,描述,价格范围,评分,评论数,开放时间,地址,纬度,经度,人气分数,是否开放,创建时间\n"
-            for data in export_data:
-                csv_content += f"{data['id']},{data['name']},{data['city']},{data['province']},{data['category']},{data['description']},{data['price_range']},{data['rating']},{data['review_count']},{data['opening_hours']},{data['address']},{data['latitude']},{data['longitude']},{data['popularity_score']},{data['is_open']},{data['created_at']}\n"
-
-            return jsonify({
-                'success': True,
-                'format': 'csv',
-                'data': csv_content,
-                'count': len(export_data)
-            })
-        else:
-            return jsonify({
-                'success': True,
-                'format': 'json',
-                'data': export_data,
-                'count': len(export_data)
-            })
-
-    except Exception as e:
-        print(f"导出景点数据错误: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@app.route('/api/admin/system/monitor', methods=['GET'])
-@admin_login_required
-def api_admin_system_monitor():
-    """系统监控API"""
-    try:
-        import psutil
-        import os
-
-        # 系统资源使用情况
-        cpu_percent = psutil.cpu_percent(interval=1)
-        memory = psutil.virtual_memory()
-        disk = psutil.disk_usage('/')
-
-        # 应用状态
-        app_status = {
-            'database': 'healthy' if Destination.query.count() >= 0 else 'error',
-            'cache': 'healthy' if len(_reviews_cache) >= 0 else 'error',
-            'weather_api': 'healthy' if weather_api.api_key else 'warning',
-            'gaode_api': 'healthy' if gaode_api else 'warning'
-        }
-
-        # 性能指标
-        performance = {
-            'response_time': random.randint(50, 200),  # 模拟响应时间(ms)
-            'requests_per_minute': random.randint(10, 100),  # 模拟每分钟请求数
-            'error_rate': round(random.uniform(0, 5), 2)  # 模拟错误率(%)
-        }
-
-        monitor_data = {
-            'system': {
-                'cpu_percent': cpu_percent,
-                'memory_percent': memory.percent,
-                'memory_used': memory.used,
-                'memory_total': memory.total,
-                'disk_percent': disk.percent,
-                'disk_used': disk.used,
-                'disk_total': disk.total
-            },
-            'application': app_status,
-            'performance': performance,
-            'timestamp': datetime.now().isoformat()
-        }
-
-        return jsonify({
-            'success': True,
-            'monitor': monitor_data
-        })
-
-    except ImportError:
-        # 如果没有psutil，返回模拟数据
-        monitor_data = {
-            'system': {
-                'cpu_percent': random.randint(10, 80),
-                'memory_percent': random.randint(30, 70),
-                'memory_used': random.randint(1000000000, 8000000000),
-                'memory_total': 8589934592,
-                'disk_percent': random.randint(20, 60),
-                'disk_used': random.randint(50000000000, 200000000000),
-                'disk_total': 500000000000
-            },
-            'application': {
-                'database': 'healthy',
-                'cache': 'healthy',
-                'weather_api': 'healthy' if weather_api.api_key else 'warning',
-                'gaode_api': 'healthy' if gaode_api else 'warning'
-            },
-            'performance': {
-                'response_time': random.randint(50, 200),
-                'requests_per_minute': random.randint(10, 100),
-                'error_rate': round(random.uniform(0, 5), 2)
-            },
-            'timestamp': datetime.now().isoformat()
-        }
-
-        return jsonify({
-            'success': True,
-            'monitor': monitor_data
-        })
-    except Exception as e:
-        print(f"系统监控错误: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@app.route('/api/admin/reviews/moderate', methods=['POST'])
-@admin_login_required
-def api_admin_moderate_reviews():
-    """评论审核API"""
-    try:
-        data = request.get_json()
-        action = data.get('action')  # approve, reject, delete
-        review_ids = data.get('review_ids', [])
-        dest_id = data.get('dest_id')
-
-        if not action or not review_ids:
-            return jsonify({'success': False, 'error': '请提供审核操作和评论ID'}), 400
-
-        # 这里简化处理，实际应该有评论审核状态表
-        cache_key = f"reviews:{dest_id}"
-        if cache_key in _reviews_cache:
-            reviews = _reviews_cache[cache_key]
-            for review_id in review_ids:
-                for review in reviews:
-                    if review['id'] == review_id:
-                        if action == 'delete':
-                            reviews.remove(review)
-                        elif action == 'approve':
-                            review['status'] = 'approved'
-                        elif action == 'reject':
-                            review['status'] = 'rejected'
-
-        return jsonify({
-            'success': True,
-            'message': f'已{action} {len(review_ids)}条评论',
-            'action': action,
-            'processed_count': len(review_ids)
-        })
-
-    except Exception as e:
-        print(f"评论审核错误: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@app.route('/api/admin/users/batch-action', methods=['POST'])
-@admin_login_required
-def api_admin_batch_user_action():
-    """批量用户操作API"""
-    try:
-        data = request.get_json()
-        action = data.get('action')  # activate, deactivate, delete
-        user_ids = data.get('user_ids', [])
-
-        if not action or not user_ids:
-            return jsonify({'success': False, 'error': '请提供操作类型和用户ID'}), 400
-
-        processed_count = 0
-        for user_id in user_ids:
-            user = db.session.get(User, user_id)
-            if user:
-                if action == 'delete':
-                    db.session.delete(user)
-                elif action == 'deactivate':
-                    # 这里可以添加用户状态字段
-                    pass
-                elif action == 'activate':
-                    # 这里可以添加用户状态字段
-                    pass
-                processed_count += 1
-
-        db.session.commit()
-
-        return jsonify({
-            'success': True,
-            'message': f'已处理 {processed_count}个用户',
-            'action': action,
-            'processed_count': processed_count
-        })
-
-    except Exception as e:
-        db.session.rollback()
-        print(f"批量用户操作错误: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
+# [旧后台管理增强功能已移除]
 
 @app.route('/api/destinations/<int:dest_id>')
 def api_destination(dest_id):
@@ -8276,15 +7748,21 @@ def internal_server_error(e):
     return render_template('500.html'), 500
 
 
-# ==================== 管理员装饰器 ====================
+# ==================== 新后台管理系统 ====================
+
 def admin_login_required(f):
-    """管理员登录验证装饰器"""
+    """管理员登录验证装饰器（JSON API版）"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'admin_id' not in session:
+            if request.is_json or request.path.startswith('/api/'):
+                return jsonify({'success': False, 'error': '未登录'}), 401
             return redirect(url_for('admin_login'))
         return f(*args, **kwargs)
     return decorated_function
+
+
+# --- 管理员页面路由 ---
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
@@ -8292,26 +7770,15 @@ def admin_login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-
-        print(f"管理员登录尝试: {username}")
-
         admin = Admin.query.filter_by(username=username).first()
-        if admin:
-            if admin.check_password(password):
-                session['admin_id'] = admin.id
-                session['admin_username'] = admin.username
-                admin.last_login = datetime.now()
-                db.session.commit()
-                print("登录成功")
-                return redirect(url_for('admin_dashboard'))
-            else:
-                print("密码错误")
-        else:
-            print("管理员不存在")
+        if admin and admin.check_password(password):
+            session['admin_id'] = admin.id
+            session['admin_username'] = admin.username
+            db.session.commit()
+            return redirect(url_for('admin_dashboard'))
+        return render_template('admin_new/login.html', error='用户名或密码错误')
+    return render_template('admin_new/login.html')
 
-        return render_template('admin/login.html', error='用户名或密码错误')
-
-    return render_template('admin/login.html')
 
 @app.route('/admin/logout')
 def admin_logout():
@@ -8320,463 +7787,299 @@ def admin_logout():
     session.pop('admin_username', None)
     return redirect(url_for('admin_login'))
 
+
 @app.route('/admin')
 @admin_login_required
 def admin_dashboard():
-    """管理后台首页"""
-    # 统计数据
+    """管理后台仪表盘"""
     total_destinations = Destination.query.count()
     total_users = User.query.count()
-    total_reviews = sum([len(v) for v in _reviews_cache.values()]) if _reviews_cache else 0
-    total_admins = Admin.query.count()
-
-    # 最近添加的景点
-    recent_destinations = Destination.query.order_by(Destination.created_at.desc()).limit(5).all()
-
-    # 最近注册的用户
+    total_conversations = Conversation.query.count()
     recent_users = User.query.order_by(User.created_at.desc()).limit(5).all()
-
-    # 热门景点
     hot_destinations = Destination.query.order_by(Destination.popularity_score.desc()).limit(5).all()
-
-    return render_template('admin/dashboard.html',
+    return render_template('admin_new/dashboard.html',
                           total_destinations=total_destinations,
                           total_users=total_users,
-                          total_reviews=total_reviews,
-                          total_admins=total_admins,
-                          recent_destinations=recent_destinations,
+                          total_conversations=total_conversations,
                           recent_users=recent_users,
                           hot_destinations=hot_destinations)
+
 
 @app.route('/admin/destinations')
 @admin_login_required
 def admin_destinations():
-    """景点管理"""
+    """景点管理页面"""
     page = request.args.get('page', 1, type=int)
+    search = request.args.get('search', '')
     per_page = 20
-    pagination = Destination.query.order_by(Destination.created_at.desc()).paginate(
-        page=page, per_page=per_page, error_out=False)
-    return render_template('admin/destinations.html',
+    query = Destination.query
+    if search:
+        query = query.filter(Destination.name.contains(search))
+    pagination = query.order_by(Destination.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    return render_template('admin_new/destinations.html',
                           destinations=pagination.items,
-                          pagination=pagination)
+                          pagination=pagination,
+                          search=search)
+
 
 @app.route('/admin/users')
 @admin_login_required
 def admin_users():
-    """用户管理"""
+    """用户管理页面"""
     page = request.args.get('page', 1, type=int)
+    search = request.args.get('search', '')
     per_page = 20
-    pagination = User.query.order_by(User.created_at.desc()).paginate(
-        page=page, per_page=per_page, error_out=False)
-    return render_template('admin/users.html',
+    query = User.query
+    if search:
+        query = query.filter(or_(User.username.contains(search), User.email.contains(search)))
+    pagination = query.order_by(User.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    return render_template('admin_new/users.html',
                           users=pagination.items,
-                          pagination=pagination)
+                          pagination=pagination,
+                          search=search)
 
 
-@app.route('/admin/reviews')
+# --- 景点 RESTful API ---
+
+@app.route('/api/admin/destinations', methods=['GET'])
 @admin_login_required
-def admin_reviews():
-    """评论管理页面"""
-    # 获取所有的评论
-    all_reviews = []
-    for dest_key, reviews in _reviews_cache.items():
-        # dest_key 格式为 'reviews:1'
-        dest_id = dest_key.split(':')[1] if ':' in dest_key else 0
-        dest = db.session.get(Destination, dest_id)
-        dest_name = dest.name if dest else '未知景点'
+def api_admin_get_destinations():
+    """获取景点列表（分页+搜索+筛选）"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        search = request.args.get('search', '')
+        category = request.args.get('category', '')
+        province = request.args.get('province', '')
 
-        for r in reviews:
-            r_copy = r.copy()
-            r_copy['dest_name'] = dest_name
-            all_reviews.append(r_copy)
+        query = Destination.query
+        if search:
+            query = query.filter(Destination.name.contains(search))
+        if category:
+            query = query.filter(Destination.category == category)
+        if province:
+            query = query.filter(Destination.province == province)
 
-    # 模拟默认数据 (如果真的没有产生任何评论缓存)
-    # 找到这段代码（大约 2489 行）
-    if not all_reviews:
-        all_reviews = [
-            {
-                'id': 1,
-                'username': '旅行者小王',  # 改成 username
-                'avatar_color': 'bg-primary',  # 添加 avatar_color
-                'content': '非常值得一去的景点，景色优美，环境整洁',
-                'rating': 5.0,
-                'status': 'approved',
-                'dest_name': '故宫博物院',
-                'created_at': '2024-03-15 14:30'  # 改成 created_at
-            },
-            {
-                'id': 2,
-                'username': '背包客小李',  # 改成 username
-                'avatar_color': 'bg-success',  # 添加 avatar_color
-                'content': '人有点多，但是景色确实不错，拍照很出片',
-                'rating': 4.0,
-                'status': 'pending',
-                'dest_name': '八达岭长城',
-                'created_at': '2024-03-15 16:45'  # 改成 created_at
-            }
-        ]
-
-    # 分页
-    page = request.args.get('page', 1, type=int)
-    per_page = 10
-    total = len(all_reviews)
-    pages = (total + per_page - 1) // per_page
-    start = (page - 1) * per_page
-    end = start + per_page
-    paginated_reviews = all_reviews[start:end]
-
-    class Pagination:
-        def __init__(self):
-            self.page = page
-            self.per_page = per_page
-            self.total = total
-            self.pages = pages
-            self.has_prev = page > 1
-            self.has_next = page < pages
-            self.prev_num = page - 1 if page > 1 else None
-            self.next_num = page + 1 if page < pages else None
-
-        def iter_pages(self):
-            return list(range(1, self.pages + 1))
-
-    pagination = Pagination()
-
-    total_reviews = len(all_reviews)
-    positive_reviews = len([r for r in all_reviews if r.get('rating', 0) >= 4])
-    pending_reviews = len([r for r in all_reviews if r.get('status') == 'pending'])
-    deleted_reviews = len([r for r in all_reviews if r.get('status') == 'deleted'])
-
-    stats = {
-        'total_reviews': int(total_reviews),
-        'positive_reviews': int(positive_reviews),
-        'pending_reviews': int(pending_reviews),
-        'deleted_reviews': int(deleted_reviews)
-    }
-
-    return render_template('admin/reviews.html', stats=stats, reviews=paginated_reviews, pagination=pagination)
+        pagination = query.order_by(Destination.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
+        return jsonify({
+            'success': True,
+            'data': [d.to_dict() for d in pagination.items],
+            'total': pagination.total,
+            'page': pagination.page,
+            'pages': pagination.pages,
+            'per_page': per_page
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
-
-@app.route('/admin/admins')
+@app.route('/api/admin/destinations', methods=['POST'])
 @admin_login_required
-def admin_admins():
-    """管理员管理"""
-    admins = Admin.query.all()
-    # 将管理员对象转换为可序列化的字典
-    admins_data = [admin.to_dict() for admin in admins]
-    return render_template('admin/admins.html', admins=admins, admins_data=admins_data)
-
-@app.route('/admin/data-manager')
-@admin_login_required
-def admin_data_manager():
-    """数据管理中心"""
-    return render_template('admin/data_manager.html')
-
-@app.route('/admin/settings')
-@admin_login_required
-def admin_settings():
-    """系统设置"""
-    return render_template('admin/settings.html')
-
-@app.route('/admin/provinces')
-@admin_login_required
-def admin_provinces():
-    """省份管理"""
-    return render_template('admin/provinces.html')
-
-@app.route('/admin/cities')
-@admin_login_required
-def admin_cities():
-    """城市管理"""
-    provinces = Province.query.order_by(Province.sort_order).all()
-    return render_template('admin/cities.html', provinces=[p.to_dict() for p in provinces])
-
-@app.route('/admin/foods')
-@admin_login_required
-def admin_foods():
-    """美食管理"""
-    return render_template('admin/foods.html')
-
-@app.route('/admin/trip-plans')
-@admin_login_required
-def admin_trip_plans():
-    """行程模板管理"""
-    return render_template('admin/trip_plans.html')
-
-@app.route('/admin/banners')
-@admin_login_required
-def admin_banners():
-    """轮播图管理"""
-    return render_template('admin/banners.html')
-
-@app.route('/admin/navigations')
-@admin_login_required
-def admin_navigations():
-    """导航菜单管理"""
-    return render_template('admin/navigations.html')
-
-# ==================== 管理员管理API ====================
-@app.route('/api/admins/add', methods=['POST'])
-@admin_login_required
-def api_add_admin():
-    """添加管理员"""
+def api_admin_create_destination():
+    """创建新景点"""
     try:
         data = request.get_json()
-
-        # 验证必填字段
-        required_fields = ['username', 'password']
-        for field in required_fields:
+        required = ['name', 'city', 'province', 'category']
+        for field in required:
             if not data.get(field):
-                return jsonify({'success': False, 'error': f'缺少必填字段：{field}'})
+                return jsonify({'success': False, 'error': f'缺少必填字段：{field}'}), 400
 
-        username = data['username'].strip()
-        password = data['password']
-        email = data.get('email', '').strip()
-        role = data.get('role', 'admin')
-
-        # 验证用户名长度
-        if len(username) < 3:
-            return jsonify({'success': False, 'error': '用户名至少3个字符'})
-
-        # 验证密码长度
-        if len(password) < 6:
-            return jsonify({'success': False, 'error': '密码至少6个字符'})
-
-        # 检查用户名是否已存在
-        if Admin.query.filter_by(username=username).first():
-            return jsonify({'success': False, 'error': '用户名已存在'})
-
-        # 检查邮箱是否已存在
-        if email and Admin.query.filter_by(email=email).first():
-            return jsonify({'success': False, 'error': '邮箱已被使用'})
-
-        # 创建新管理员
-        admin = Admin(
-            username=username,
-            email=email if email else None,
-            role=role
-        )
-        admin.set_password(password)
-
-        db.session.add(admin)
-        db.session.commit()
-
-        return jsonify({'success': True, 'message': '管理员添加成功', 'id': admin.id})
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/api/admins/<int:admin_id>/update', methods=['POST'])
-@admin_login_required
-def api_update_admin(admin_id):
-    """更新管理员"""
-    try:
-        admin = db.session.get(Admin, admin_id)
-        if not admin:
-            return jsonify({'success': False, 'error': '管理员不存在'})
-
-        data = request.get_json()
-
-        # 验证必填字段
-        required_fields = ['username']
-        for field in required_fields:
-            if not data.get(field):
-                return jsonify({'success': False, 'error': f'缺少必填字段：{field}'})
-
-        username = data['username'].strip()
-        email = data.get('email', '').strip()
-        role = data.get('role', admin.role)
-
-        # 验证用户名长度
-        if len(username) < 3:
-            return jsonify({'success': False, 'error': '用户名至少3个字符'})
-
-        # 检查用户名是否已存在（排除当前管理员）
-        existing_admin = Admin.query.filter_by(username=username).first()
-        if existing_admin and existing_admin.id != admin_id:
-            return jsonify({'success': False, 'error': '用户名已存在'})
-
-        # 检查邮箱是否已存在（排除当前管理员）
-        if email:
-            existing_email = Admin.query.filter_by(email=email).first()
-            if existing_email and existing_email.id != admin_id:
-                return jsonify({'success': False, 'error': '邮箱已被使用'})
-
-        # 更新管理员信息
-        admin.username = username
-        admin.email = email if email else None
-        admin.role = role
-
-        # 如果提供了新密码，则更新密码
-        new_password = data.get('password')
-        if new_password:
-            if len(new_password) < 6:
-                return jsonify({'success': False, 'error': '新密码至少6个字符'})
-            admin.set_password(new_password)
-
-        db.session.commit()
-
-        return jsonify({'success': True, 'message': '管理员更新成功'})
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/api/admins/<int:admin_id>/delete', methods=['POST'])
-@admin_login_required
-def api_delete_admin(admin_id):
-    """删除管理员"""
-    try:
-        admin = db.session.get(Admin, admin_id)
-        if not admin:
-            return jsonify({'success': False, 'error': '管理员不存在'})
-
-        # 不能删除自己
-        if admin.id == session.get('admin_id'):
-            return jsonify({'success': False, 'error': '不能删除当前登录的管理员'})
-
-        db.session.delete(admin)
-        db.session.commit()
-
-        return jsonify({'success': True, 'message': '管理员删除成功'})
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/api/admins/<int:admin_id>/reset-password', methods=['POST'])
-@admin_login_required
-def api_reset_admin_password(admin_id):
-    """重置管理员密码"""
-    try:
-        admin = db.session.get(Admin, admin_id)
-        if not admin:
-            return jsonify({'success': False, 'error': '管理员不存在'})
-
-        # 重置密码为 admin123
-        new_password = 'admin123'
-        admin.set_password(new_password)
-        db.session.commit()
-
-        return jsonify({'success': True, 'message': f'密码已重置为：{new_password}'})
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)})
-
-# ==================== 景点管理API ====================
-@app.route('/api/destinations/add', methods=['POST'])
-@admin_login_required
-def api_add_destination():
-    """添加景点"""
-    try:
-        data = request.get_json()
-
-        # 验证必填字段
-        required_fields = ['name', 'city', 'province', 'category']
-        for field in required_fields:
-            if not data.get(field):
-                return jsonify({'success': False, 'error': f'缺少必填字段：{field}'})
-
-        # 创建新景点
-        destination = Destination(
+        dest = Destination(
             name=data['name'],
             city=data['city'],
             province=data['province'],
             category=data['category'],
             description=data.get('description', ''),
-            address=data.get('address', ''),
             price_range=data.get('price_range', ''),
             opening_hours=data.get('opening_hours', ''),
+            address=data.get('address', ''),
             rating=float(data.get('rating', 4.5)),
             popularity_score=70.0,
             is_open=True,
             tags='[]',
-            images='[]',
-            cover_image=None
+            images='[]'
         )
-
-        db.session.add(destination)
+        db.session.add(dest)
         db.session.commit()
 
-        return jsonify({'success': True, 'message': '景点添加成功', 'id': destination.id})
+        # SocketIO 实时通知
+        socketio.emit('data_changed', {'type': 'destination', 'action': 'create', 'id': dest.id, 'name': dest.name})
 
+        return jsonify({'success': True, 'message': '景点创建成功', 'id': dest.id})
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/destinations/<int:dest_id>/update', methods=['POST'])
+
+@app.route('/api/admin/destinations/<int:dest_id>', methods=['GET'])
 @admin_login_required
-def api_update_destination(dest_id):
+def api_admin_get_destination(dest_id):
+    """获取单个景点"""
+    dest = db.session.get(Destination, dest_id)
+    if not dest:
+        return jsonify({'success': False, 'error': '景点不存在'}), 404
+    return jsonify({'success': True, 'data': dest.to_dict()})
+
+
+@app.route('/api/admin/destinations/<int:dest_id>', methods=['PUT'])
+@admin_login_required
+def api_admin_update_destination(dest_id):
     """更新景点"""
     try:
-        destination = db.session.get(Destination, dest_id)
-        if not destination:
-            return jsonify({'success': False, 'error': '景点不存在'})
+        dest = db.session.get(Destination, dest_id)
+        if not dest:
+            return jsonify({'success': False, 'error': '景点不存在'}), 404
 
         data = request.get_json()
-
-        # 验证必填字段
-        required_fields = ['name', 'city', 'province', 'category']
-        for field in required_fields:
+        required = ['name', 'city', 'province', 'category']
+        for field in required:
             if not data.get(field):
-                return jsonify({'success': False, 'error': f'缺少必填字段：{field}'})
+                return jsonify({'success': False, 'error': f'缺少必填字段：{field}'}), 400
 
-        # 更新景点信息
-        destination.name = data['name']
-        destination.city = data['city']
-        destination.province = data['province']
-        destination.category = data['category']
-        destination.description = data.get('description', destination.description)
-        destination.address = data.get('address', destination.address)
-        destination.price_range = data.get('price_range', destination.price_range)
-        destination.opening_hours = data.get('opening_hours', destination.opening_hours)
-        destination.rating = float(data.get('rating', destination.rating))
-
+        dest.name = data['name']
+        dest.city = data['city']
+        dest.province = data['province']
+        dest.category = data['category']
+        dest.description = data.get('description', dest.description)
+        dest.price_range = data.get('price_range', dest.price_range)
+        dest.opening_hours = data.get('opening_hours', dest.opening_hours)
+        dest.address = data.get('address', dest.address)
+        dest.rating = float(data.get('rating', dest.rating))
         db.session.commit()
+
+        # SocketIO 实时通知
+        socketio.emit('data_changed', {'type': 'destination', 'action': 'update', 'id': dest.id, 'name': dest.name})
 
         return jsonify({'success': True, 'message': '景点更新成功'})
-
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/destinations/<int:dest_id>/delete', methods=['POST'])
+
+@app.route('/api/admin/destinations/<int:dest_id>', methods=['DELETE'])
 @admin_login_required
-def api_delete_destination(dest_id):
+def api_admin_delete_destination(dest_id):
     """删除景点"""
     try:
-        destination = db.session.get(Destination, dest_id)
-        if not destination:
-            return jsonify({'success': False, 'error': '景点不存在'})
+        dest = db.session.get(Destination, dest_id)
+        if not dest:
+            return jsonify({'success': False, 'error': '景点不存在'}), 404
 
-        db.session.delete(destination)
+        name = dest.name
+        db.session.delete(dest)
         db.session.commit()
 
-        return jsonify({'success': True, 'message': '景点删除成功'})
+        # SocketIO 实时通知
+        socketio.emit('data_changed', {'type': 'destination', 'action': 'delete', 'id': dest_id, 'name': name})
 
+        return jsonify({'success': True, 'message': '景点删除成功'})
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
-# ==================== 管理员重置密码 ====================
+# --- 用户 RESTful API ---
+
+@app.route('/api/admin/users', methods=['GET'])
+@admin_login_required
+def api_admin_get_users():
+    """获取用户列表（分页+搜索）"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        search = request.args.get('search', '')
+
+        query = User.query
+        if search:
+            query = query.filter(or_(User.username.contains(search), User.email.contains(search)))
+
+        pagination = query.order_by(User.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
+        return jsonify({
+            'success': True,
+            'data': [u.to_dict() for u in pagination.items],
+            'total': pagination.total,
+            'page': pagination.page,
+            'pages': pagination.pages,
+            'per_page': per_page
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/users/<int:user_id>', methods=['GET'])
+@admin_login_required
+def api_admin_get_user(user_id):
+    """获取单个用户"""
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({'success': False, 'error': '用户不存在'}), 404
+    return jsonify({'success': True, 'data': user.to_dict()})
+
+
+@app.route('/api/admin/users/<int:user_id>', methods=['PUT'])
+@admin_login_required
+def api_admin_update_user(user_id):
+    """更新用户"""
+    try:
+        user = db.session.get(User, user_id)
+        if not user:
+            return jsonify({'success': False, 'error': '用户不存在'}), 404
+
+        data = request.get_json()
+        if data.get('username'):
+            existing = User.query.filter_by(username=data['username']).first()
+            if existing and existing.id != user_id:
+                return jsonify({'success': False, 'error': '用户名已存在'}), 400
+            user.username = data['username']
+        if 'email' in data:
+            user.email = data['email'] or None
+        if 'phone' in data:
+            user.phone = data['phone'] or None
+
+        db.session.commit()
+
+        # SocketIO 实时通知
+        socketio.emit('data_changed', {'type': 'user', 'action': 'update', 'id': user.id, 'name': user.username})
+
+        return jsonify({'success': True, 'message': '用户更新成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/users/<int:user_id>', methods=['DELETE'])
+@admin_login_required
+def api_admin_delete_user(user_id):
+    """删除用户"""
+    try:
+        user = db.session.get(User, user_id)
+        if not user:
+            return jsonify({'success': False, 'error': '用户不存在'}), 404
+
+        username = user.username
+        db.session.delete(user)
+        db.session.commit()
+
+        # SocketIO 实时通知
+        socketio.emit('data_changed', {'type': 'user', 'action': 'delete', 'id': user_id, 'name': username})
+
+        return jsonify({'success': True, 'message': '用户删除成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ==================== 管理员重置 ====================
 @app.route('/admin/reset-admin')
 def reset_admin():
-    """重置管理员密码"""
+    """重置管理员密码 / 创建默认管理员"""
     admin = Admin.query.filter_by(username='admin').first()
     if admin:
         admin.set_password('admin123')
         db.session.commit()
         return "管理员密码已重置为: admin123"
     else:
-        # 如果没有管理员，创建一个
-        admin = Admin(
-            username='admin',
-            email='admin@travel.com',
-            role='super_admin'
-        )
+        admin = Admin(username='admin')
         admin.set_password('admin123')
         db.session.add(admin)
         db.session.commit()
@@ -8873,11 +8176,7 @@ def init_admin():
     """初始化管理员账号"""
     if Admin.query.count() == 0:
         print("👤 创建默认管理员...")
-        admin = Admin(
-            username='admin',
-            email='admin@travel.com',
-            role='super_admin'
-        )
+        admin = Admin(username='admin')
         admin.set_password('admin123')
         db.session.add(admin)
         db.session.commit()
@@ -8886,7 +8185,7 @@ def init_admin():
         admins = Admin.query.all()
         print(f"👤 现有 {len(admins)} 个管理员账号")
         for a in admins:
-            print(f"   - 用户名: {a.username}, 角色: {a.role}")
+            print(f"   - 用户名: {a.username}")
 
 def remove_duplicate_destinations():
     """移除重复的景点数据"""

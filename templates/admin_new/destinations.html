@@ -1,0 +1,238 @@
+{% extends "admin_new/base.html" %}
+{% block title %}景点管理{% endblock %}
+{% block page_title %}景点管理{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="search-box">
+        <i class="bi bi-search"></i>
+        <input type="text" id="searchInput" class="form-control" placeholder="搜索景点名称..." style="width:300px;padding-left:36px">
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#destModal" onclick="openAddModal()">
+        <i class="bi bi-plus-lg me-1"></i> 添加景点
+    </button>
+</div>
+
+<div class="data-table">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>景点名称</th>
+                <th>城市</th>
+                <th>省份</th>
+                <th>分类</th>
+                <th>评分</th>
+                <th>状态</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody id="destTableBody">
+            {% for dest in destinations %}
+            <tr data-id="{{ dest.id }}">
+                <td>{{ dest.id }}</td>
+                <td>{{ dest.name }}</td>
+                <td>{{ dest.city }}</td>
+                <td>{{ dest.province }}</td>
+                <td><span class="badge bg-info">{{ dest.category }}</span></td>
+                <td><span class="badge bg-warning text-dark">{{ dest.rating }}</span></td>
+                <td>
+                    {% if dest.is_open %}
+                    <span class="badge bg-success">开放</span>
+                    {% else %}
+                    <span class="badge bg-secondary">关闭</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="editDest({{ dest.id }})">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteDest({{ dest.id }})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+{% if pagination.pages > 1 %}
+<nav class="mt-3 d-flex justify-content-center">
+    <ul class="pagination">
+        {% if pagination.has_prev %}
+        <li class="page-item"><a class="page-link" href="?page={{ pagination.prev_num }}&search={{ search }}">上一页</a></li>
+        {% endif %}
+        {% for p in pagination.iter_pages() %}
+            {% if p %}
+            <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                <a class="page-link" href="?page={{ p }}&search={{ search }}">{{ p }}</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+        {% endfor %}
+        {% if pagination.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ pagination.next_num }}&search={{ search }}">下一页</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- Modal -->
+<div class="modal fade" id="destModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="destModalTitle">添加景点</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="destId">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">景点名称 *</label>
+                        <input type="text" class="form-control" id="destName" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">城市 *</label>
+                        <input type="text" class="form-control" id="destCity" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">省份 *</label>
+                        <input type="text" class="form-control" id="destProvince" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">分类 *</label>
+                        <input type="text" class="form-control" id="destCategory" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">价格区间</label>
+                        <input type="text" class="form-control" id="destPrice" placeholder="如：60元">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">开放时间</label>
+                        <input type="text" class="form-control" id="destHours" placeholder="如：08:30-17:00">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">地址</label>
+                        <input type="text" class="form-control" id="destAddress">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">描述</label>
+                        <textarea class="form-control" id="destDesc" rows="3"></textarea>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">评分</label>
+                        <input type="number" class="form-control" id="destRating" min="0" max="5" step="0.1" value="4.5">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveDest()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const searchInput = document.getElementById('searchInput');
+let searchTimeout;
+searchInput.addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        window.location.href = `?search=${encodeURIComponent(this.value)}`;
+    }, 500);
+});
+// Restore search value
+searchInput.value = '{{ search }}';
+
+function openAddModal() {
+    document.getElementById('destModalTitle').textContent = '添加景点';
+    document.getElementById('destId').value = '';
+    ['destName','destCity','destProvince','destCategory','destPrice','destHours','destAddress','destDesc'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('destRating').value = '4.5';
+}
+
+function editDest(id) {
+    fetch(`/api/admin/destinations/${id}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const d = data.data;
+                document.getElementById('destModalTitle').textContent = '编辑景点';
+                document.getElementById('destId').value = d.id;
+                document.getElementById('destName').value = d.name;
+                document.getElementById('destCity').value = d.city;
+                document.getElementById('destProvince').value = d.province;
+                document.getElementById('destCategory').value = d.category;
+                document.getElementById('destPrice').value = d.price_range || '';
+                document.getElementById('destHours').value = d.opening_hours || '';
+                document.getElementById('destAddress').value = d.address || '';
+                document.getElementById('destDesc').value = d.description || '';
+                document.getElementById('destRating').value = d.rating;
+                new bootstrap.Modal(document.getElementById('destModal')).show();
+            }
+        });
+}
+
+function saveDest() {
+    const id = document.getElementById('destId').value;
+    const data = {
+        name: document.getElementById('destName').value,
+        city: document.getElementById('destCity').value,
+        province: document.getElementById('destProvince').value,
+        category: document.getElementById('destCategory').value,
+        price_range: document.getElementById('destPrice').value,
+        opening_hours: document.getElementById('destHours').value,
+        address: document.getElementById('destAddress').value,
+        description: document.getElementById('destDesc').value,
+        rating: parseFloat(document.getElementById('destRating').value) || 4.5
+    };
+
+    if (!data.name || !data.city || !data.province || !data.category) {
+        showToast('请填写必填字段', 'danger');
+        return;
+    }
+
+    const url = id ? `/api/admin/destinations/${id}` : '/api/admin/destinations';
+    const method = id ? 'PUT' : 'POST';
+
+    fetch(url, {
+        method: method,
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            showToast(res.message);
+            bootstrap.Modal.getInstance(document.getElementById('destModal')).hide();
+            setTimeout(() => location.reload(), 500);
+        } else {
+            showToast(res.error || '操作失败', 'danger');
+        }
+    })
+    .catch(() => showToast('网络错误', 'danger'));
+}
+
+function deleteDest(id) {
+    if (!confirm('确定要删除这个景点吗？')) return;
+    fetch(`/api/admin/destinations/${id}`, {method: 'DELETE'})
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                showToast(res.message);
+                document.querySelector(`tr[data-id="${id}"]`).remove();
+            } else {
+                showToast(res.error || '删除失败', 'danger');
+            }
+        });
+}
+</script>
+{% endblock %}
