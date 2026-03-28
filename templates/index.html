@@ -774,7 +774,7 @@
                                     <a href="/dest/{{ dest.id }}" class="destination-card">
                                         <div class="position-relative overflow-hidden">
                                             <img class="card-img-top" 
-                                                 src="{{ dest.cover_image if dest.cover_image else url_for('static', filename='images/placeholder.jpg') }}"
+                                                 src="{{ (dest._dynamic_cover or dest.cover_image) if (dest._dynamic_cover or dest.cover_image) else url_for('static', filename='images/placeholder.jpg') }}"
                                                  alt="{{ dest.name }}"
                                                  onerror="this.src='{{ url_for('static', filename='images/placeholder.jpg') }}';">
                                             <span class="position-absolute top-0 start-0 m-3 badge bg-dark bg-opacity-75">
@@ -896,7 +896,7 @@
                         <a href="/dest/{{ dest.id }}" class="destination-card">
                             <div class="position-relative overflow-hidden">
                                 <img class="card-img-top" 
-                                     src="{{ dest.cover_image if dest.cover_image else url_for('static', filename='images/placeholder.jpg') }}"
+                                     src="{{ (dest._dynamic_cover or dest.cover_image) if (dest._dynamic_cover or dest.cover_image) else url_for('static', filename='images/placeholder.jpg') }}"
                                      alt="{{ dest.name }}"
                                      onerror="this.src='{{ url_for('static', filename='images/placeholder.jpg') }}';">
                                 <span class="position-absolute top-0 end-0 m-3 rating-badge">
@@ -943,7 +943,7 @@
                             </span>
                             <div class="position-relative overflow-hidden">
                                 <img class="card-img-top" 
-                                     src="{{ dest.cover_image or url_for('static', filename='images/placeholder.jpg') }}"
+                                     src="{{ (dest._dynamic_cover or dest.cover_image) or url_for('static', filename='images/placeholder.jpg') }}"
                                      alt="{{ dest.name }}"
                                      onerror="this.src='{{ url_for('static', filename='images/placeholder.jpg') }}';">
                                 <span class="position-absolute top-0 end-0 m-3 rating-badge">
@@ -997,7 +997,7 @@
                             </span>
                             <div class="position-relative overflow-hidden">
                                 <img class="card-img-top" 
-                                     src="{{ dest.cover_image or url_for('static', filename='images/placeholder.jpg') }}"
+                                     src="{{ (dest._dynamic_cover or dest.cover_image) or url_for('static', filename='images/placeholder.jpg') }}"
                                      alt="{{ dest.name }}"
                                      onerror="this.src='{{ url_for('static', filename='images/placeholder.jpg') }}';">
                             </div>
@@ -1039,7 +1039,7 @@
                             <a href="/dest/{{ dest.id }}" class="destination-card">
                                 <div class="position-relative overflow-hidden">
                                     <img class="card-img-top" 
-                                         src="{{ dest.cover_image if dest.cover_image else url_for('static', filename='images/placeholder.jpg') }}"
+                                         src="{{ (dest._dynamic_cover or dest.cover_image) if (dest._dynamic_cover or dest.cover_image) else url_for('static', filename='images/placeholder.jpg') }}"
                                          alt="{{ dest.name }}"
                                          loading="lazy"
                                          onerror="this.src='{{ url_for('static', filename='images/placeholder.jpg') }}';">

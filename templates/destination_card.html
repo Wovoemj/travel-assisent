@@ -13,7 +13,7 @@
     <!-- 景点图片 -->
     <div class="h-48 bg-gradient-to-r from-purple-400 to-pink-400 relative overflow-hidden">
         <img class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-             src="{{ dest.cover_image if dest.cover_image else url_for('static', filename='images/placeholder.jpg') }}"
+             src="{{ (dest._dynamic_cover or dest.cover_image) if (dest._dynamic_cover or dest.cover_image) else url_for('static', filename='images/placeholder.jpg') }}"
              alt="{{ dest.name }}"
              onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/placeholder.jpg') }}';">
         <!-- 省份标签 -->

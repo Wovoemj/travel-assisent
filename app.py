@@ -140,66 +140,77 @@ def load_background_images_from_folder():
 BACKGROUND_IMAGES = load_background_images_from_folder()
 
 # ==================== 图片匹配函数 ====================
-def match_scenic_image(dest_name, external=False):
-    """
-    根据景点名称从scenic_images文件夹中匹配图片
-    返回匹配到的第一张图片的URL，如果没有匹配则返回默认图片
-    external参数控制是否返回完整URL（在请求上下文中使用）
-    """
+# ==================== 景点图片缓存 ====================
+_IMAGE_CACHE = None
+
+def _build_image_cache():
+    """启动时构建图片索引缓存，避免每次请求遍历文件系统"""
+    global _IMAGE_CACHE
+    if _IMAGE_CACHE is not None:
+        return _IMAGE_CACHE
+    cache = {}
     scenic_images_dir = Path("scenic_images")
     if not scenic_images_dir.exists():
-        if external:
-            try:
-                return url_for('static', filename='images/placeholder.jpg', _external=True)
-            except:
-                return '/static/images/placeholder.jpg'
-        return '/static/images/placeholder.jpg'
-
-    # 清理景点名称，移除可能的特殊字符
-    clean_name = dest_name.strip().replace(' ', '').replace('·', '').replace('-', '')
-
-    # 遍历所有子文件夹
+        _IMAGE_CACHE = cache
+        return cache
+    image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
     for sub_dir in scenic_images_dir.iterdir():
         if not sub_dir.is_dir():
             continue
+        images = [f for f in sub_dir.iterdir()
+                  if f.is_file() and f.suffix.lower() in image_extensions]
+        if images:
+            # 存储文件夹名（用于精确匹配）和所有可能的子串key
+            name = sub_dir.name
+            cache[name] = f'/static/scenic_images/{name}/{images[0].name}'
+            # 去掉常见后缀做模糊key
+            for suffix in ['风景名胜区', '风景名胜', '旅游区', '旅游景区', '景区', '风景区', '遗址', '博物馆', '公园', '寺', '庙']:
+                short = name.replace(suffix, '')
+                if short and short not in cache:
+                    cache[short] = f'/static/scenic_images/{name}/{images[0].name}'
+    print(f"✅ 图片缓存构建完成: {len(cache)} 个索引")
+    _IMAGE_CACHE = cache
+    return cache
 
-        # 检查文件夹名是否包含景点名称或景点名称包含文件夹名
-        if clean_name in sub_dir.name or sub_dir.name in clean_name:
-            # 获取该文件夹中的所有图片文件
-            image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
-            images = [f for f in sub_dir.iterdir()
-                     if f.is_file() and f.suffix.lower() in image_extensions]
+def match_scenic_image(dest_name, external=False):
+    """
+    根据景点名称从scenic_images文件夹中匹配图片（使用缓存）
+    """
+    cache = _build_image_cache()
+    clean_name = dest_name.strip().replace(' ', '').replace('·', '').replace('-', '')
 
-            if images:
-                # 返回第一张图片的URL
-                if external:
-                    try:
-                        return url_for('static', filename=f'scenic_images/{sub_dir.name}/{images[0].name}', _external=True)
-                    except:
-                        return f'/static/scenic_images/{sub_dir.name}/{images[0].name}'
-                return f'/static/scenic_images/{sub_dir.name}/{images[0].name}'
+    # 1. 精确匹配
+    if clean_name in cache:
+        return cache[clean_name]
 
-    # 如果没有匹配到，返回默认图片
+    # 2. 子串匹配：目标名包含缓存key 或 缓存key包含目标名
+    for key, url in cache.items():
+        if clean_name in key or key in clean_name:
+            return url
+
+    # 3. 无匹配，返回默认
+    placeholder = '/static/images/placeholder.jpg'
     if external:
         try:
             return url_for('static', filename='images/placeholder.jpg', _external=True)
-        except:
-            return '/static/images/placeholder.jpg'
-    return '/static/images/placeholder.jpg'
+        except Exception:
+            return placeholder
+    return placeholder
 
 def update_destinations_with_images():
-    """更新数据库中的景点图片（在应用上下文中调用）"""
-    destinations = Destination.query.all()
+    """更新数据库中的景点图片（使用缓存，批量更新）"""
+    # 先构建图片缓存
+    _build_image_cache()
+    # 只查没有封面的景点
+    destinations = Destination.query.filter(
+        (Destination.cover_image == None) | (Destination.cover_image == '') | (Destination.cover_image.like('%placeholder%'))
+    ).all()
     updated_count = 0
-
     for dest in destinations:
-        # 如果没有封面图片或封面是默认图片，尝试匹配
-        if not dest.cover_image or 'placeholder' in dest.cover_image:
-            matched_image = match_scenic_image(dest.name, external=False)
-            if matched_image and 'placeholder' not in matched_image:
-                dest.cover_image = matched_image
-                updated_count += 1
-
+        matched_image = match_scenic_image(dest.name, external=False)
+        if matched_image and 'placeholder' not in matched_image:
+            dest.cover_image = matched_image
+            updated_count += 1
     if updated_count > 0:
         db.session.commit()
         print(f"✅ 已更新 {updated_count} 个景点的图片")
@@ -1822,15 +1833,24 @@ class TravelAssistant:
                 if alias in message:
                     return standard_name
 
-        # 然后查询数据库
+        # 然后查询数据库（使用LIKE索引查询，避免全表加载）
         try:
-            destinations = Destination.query.all()
-            # 按名称长度降序排列，优先匹配更长的名称
-            destinations_sorted = sorted(destinations, key=lambda x: len(x.name), reverse=True)
-            for dest in destinations_sorted:
-                if dest.name in message:
-                    return dest.name
-        except:
+            # 按名称长度降序，优先匹配更长的名称
+            results = Destination.query.filter(
+                Destination.name.in_([k for k in self.fuzzy_keywords if k in message])
+            ).all()
+            if results:
+                results.sort(key=lambda x: len(x.name), reverse=True)
+                return results[0].name
+            # 模糊匹配：取前几个字符做前缀查询
+            for length in range(min(len(message), 8), 1, -1):
+                candidates = Destination.query.filter(
+                    Destination.name.like(f'%{message[:length]}%')
+                ).limit(5).all()
+                for dest in candidates:
+                    if dest.name in message:
+                        return dest.name
+        except Exception:
             pass
 
         return None
@@ -4404,38 +4424,17 @@ def index():
 
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
-    # 为没有封面的景点匹配图片
+    # 为没有封面的景点动态匹配图片（不写入数据库，减少IO）
     for dest_item in pagination.items:
-        if not dest_item.cover_image or 'placeholder' in dest_item.cover_image:
-            matched_image = match_scenic_image(dest_item.name, external=True)
-            if matched_image and 'placeholder' not in matched_image:
-                dest_item.cover_image = matched_image
+        if not dest_item.cover_image or 'placeholder' in str(dest_item.cover_image):
+            matched = match_scenic_image(dest_item.name)
+            if matched and 'placeholder' not in matched:
+                dest_item._dynamic_cover = matched
 
-    db.session.commit()
-
-    # 统计信息
-    total_count = Destination.query.count()
-    unique_provinces = db.session.query(Destination.province).distinct().count()
-    unique_categories = db.session.query(Destination.category).distinct().count()
-    avg_rating = db.session.query(func.avg(Destination.rating)).scalar() or 0
-
-    # 分类统计
-    category_stats = db.session.query(
-        Destination.category,
-        func.count(Destination.id).label('count')
-    ).group_by(Destination.category).order_by(Destination.category).all()
-
-    # 省份统计
-    province_stats = db.session.query(
-        Destination.province,
-        func.count(Destination.id).label('count')
-    ).group_by(Destination.province).order_by(Destination.province).all()
-
-    # 热门景点
-    hot_destinations = Destination.query.order_by(Destination.popularity_score.desc()).limit(10).all()
-
-    # 好评景点
-    top_rated_destinations = Destination.query.order_by(Destination.rating.desc()).limit(10).all()
+    # 统计信息（合并为一次查询，使用缓存）
+    stats = _get_destination_stats()
+    hot_destinations = _get_hot_destinations()
+    top_rated_destinations = _get_top_rated()
 
     # 获取当前用户
     current_user = None
@@ -4444,7 +4443,6 @@ def index():
         current_user = db.session.get(User, session['user_id'])
         if current_user:
             user_favorites = json.loads(current_user.favorites or '[]')
-            print(f"当前登录用户: {current_user.username}")
 
     # 随机背景图片
     bg_image = random.choice(BACKGROUND_IMAGES)['url']
@@ -4458,16 +4456,49 @@ def index():
                            view_mode=view,
                            current_user=current_user,
                            user_favorites=user_favorites,
-                           total_count=total_count,
-                           unique_provinces=unique_provinces,
-                           unique_categories=unique_categories,
-                           avg_rating=round(avg_rating, 1),
-                           category_stats=category_stats,
-                           province_stats=province_stats,
+                           total_count=stats['total'],
+                           unique_provinces=stats['provinces'],
+                           unique_categories=stats['categories'],
+                           avg_rating=stats['avg_rating'],
+                           category_stats=stats['category_stats'],
+                           province_stats=stats['province_stats'],
                            hot_destinations=hot_destinations,
                            top_rated_destinations=top_rated_destinations,
                            ALL_PROVINCES=ALL_PROVINCES,
                            background_image=bg_image)
+
+
+@cache.memoize(timeout=600)
+def _get_destination_stats():
+    """缓存景点统计数据（10分钟）"""
+    total = Destination.query.count()
+    provinces = db.session.query(Destination.province).distinct().count()
+    categories = db.session.query(Destination.category).distinct().count()
+    avg_rating = db.session.query(func.avg(Destination.rating)).scalar() or 0
+    category_stats = db.session.query(
+        Destination.category, func.count(Destination.id)
+    ).group_by(Destination.category).order_by(Destination.category).all()
+    province_stats = db.session.query(
+        Destination.province, func.count(Destination.id)
+    ).group_by(Destination.province).order_by(Destination.province).all()
+    return {
+        'total': total,
+        'provinces': provinces,
+        'categories': categories,
+        'avg_rating': round(float(avg_rating), 1),
+        'category_stats': category_stats,
+        'province_stats': province_stats,
+    }
+
+@cache.memoize(timeout=600)
+def _get_hot_destinations():
+    """缓存热门景点（10分钟）"""
+    return Destination.query.order_by(Destination.popularity_score.desc()).limit(10).all()
+
+@cache.memoize(timeout=600)
+def _get_top_rated():
+    """缓存好评景点（10分钟）"""
+    return Destination.query.order_by(Destination.rating.desc()).limit(10).all()
 
 
 # ==================== 智能助手页面 ====================
