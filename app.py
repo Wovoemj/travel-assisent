@@ -8435,6 +8435,12 @@ def admin_admins():
     admins_data = [admin.to_dict() for admin in admins]
     return render_template('admin/admins.html', admins=admins, admins_data=admins_data)
 
+@app.route('/admin/data-manager')
+@admin_login_required
+def admin_data_manager():
+    """数据管理中心"""
+    return render_template('admin/data_manager.html')
+
 @app.route('/admin/settings')
 @admin_login_required
 def admin_settings():
@@ -9110,6 +9116,108 @@ def test_destination_detail():
 def test_login_page():
     """测试登录页面"""
     return send_from_directory('.', 'test_login_simple.html')
+
+
+# ==================== 导入扩展模型和 API 路由 ====================
+from models_extended import define_models
+_ext = define_models(db)
+Province = _ext['Province']
+City = _ext['City']
+Food = _ext['Food']
+TripPlan = _ext['TripPlan']
+Review = _ext['Review']
+SiteConfig = _ext['SiteConfig']
+Banner = _ext['Banner']
+Navigation = _ext['Navigation']
+print("✅ 扩展模型已注册")
+
+from api_routes_extended import api_extended
+app.register_blueprint(api_extended)
+print("✅ API v2 路由已加载")
+
+
+# ==================== 基于数据库的前端内容 API ====================
+
+@app.route('/api/v2/site/info')
+def api_v2_site_info():
+    """获取站点信息（从数据库读取）"""
+    try:
+        configs = SiteConfig.query.filter_by(is_public=True).all()
+        result = {}
+        for c in configs:
+            val = c.value
+            if c.value_type == 'bool':
+                val = val.lower() == 'true' if val else False
+            elif c.value_type == 'int':
+                val = int(val) if val else 0
+            result[c.key] = val
+        return jsonify({'success': True, 'data': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/v2/nav/header')
+def api_v2_nav_header():
+    """获取页头导航"""
+    try:
+        navs = Navigation.query.filter_by(position='header', is_active=True)\
+            .order_by(Navigation.sort_order).all()
+        return jsonify({'success': True, 'data': [n.to_dict() for n in navs]})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/v2/nav/footer')
+def api_v2_nav_footer():
+    """获取页脚导航"""
+    try:
+        navs = Navigation.query.filter_by(position='footer', is_active=True)\
+            .order_by(Navigation.sort_order).all()
+        return jsonify({'success': True, 'data': [n.to_dict() for n in navs]})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/v2/home/data')
+def api_v2_home_data():
+    """首页聚合数据接口"""
+    try:
+        # 热门景点
+        hot_dest = Destination.query.order_by(Destination.popularity_score.desc()).limit(8).all()
+        # 好评景点
+        top_dest = Destination.query.order_by(Destination.rating.desc()).limit(8).all()
+        # 省份列表
+        provinces = Province.query.filter_by(is_active=True).order_by(Province.sort_order).all()
+        # 分类统计
+        categories = db.session.query(
+            Destination.category, func.count(Destination.id)
+        ).group_by(Destination.category).all()
+        # 轮播图
+        banners = Banner.query.filter_by(is_active=True).order_by(Banner.sort_order).all()
+        # 站点配置
+        site_configs = {}
+        for c in SiteConfig.query.filter_by(is_public=True).all():
+            site_configs[c.key] = c.value
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'hot_destinations': [d.to_dict() for d in hot_dest],
+                'top_destinations': [d.to_dict() for d in top_dest],
+                'provinces': [p.to_dict() for p in provinces],
+                'categories': [{'name': c[0], 'count': c[1]} for c in categories],
+                'banners': [b.to_dict() for b in banners],
+                'site': site_configs,
+                'stats': {
+                    'total_destinations': Destination.query.count(),
+                    'total_provinces': Province.query.count(),
+                    'total_cities': City.query.count(),
+                    'total_foods': Food.query.count(),
+                }
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 # ==================== 启动应用 ====================

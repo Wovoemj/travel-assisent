@@ -13,6 +13,7 @@ try:
     REDIS_AVAILABLE = True
 except:
     REDIS_AVAILABLE = False
+    redis_client = None  # 确保导出时不会报错
     # 内存存储作为后备
     _state_storage = {}
 

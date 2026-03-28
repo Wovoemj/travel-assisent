@@ -1,0 +1,484 @@
+{% extends "admin/base.html" %}
+
+{% block title %}数据管理中心{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">📊 数据管理中心</h2>
+
+    <!-- 统计卡片 -->
+    <div class="row mb-4" id="stats-cards">
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">🏙️ 省份</h5>
+                    <h2 id="stat-province">-</h2>
+                    <a href="#" class="text-white" onclick="switchTab('province')">管理 →</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">📍 城市</h5>
+                    <h2 id="stat-city">-</h2>
+                    <a href="#" class="text-white" onclick="switchTab('city')">管理 →</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-warning text-dark">
+                <div class="card-body">
+                    <h5 class="card-title">🍜 美食</h5>
+                    <h2 id="stat-food">-</h2>
+                    <a href="#" class="text-dark" onclick="switchTab('food')">管理 →</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">🗺️ 行程模板</h5>
+                    <h2 id="stat-trip_plan">-</h2>
+                    <a href="#" class="text-white" onclick="switchTab('trip_plan')">管理 →</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h5 class="card-title">💬 评论</h5>
+                    <h2 id="stat-review">-</h2>
+                    <a href="#" class="text-white" onclick="switchTab('review')">管理 →</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-secondary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">⚙️ 配置项</h5>
+                    <h2 id="stat-site_config">-</h2>
+                    <a href="#" class="text-white" onclick="switchTab('config')">管理 →</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-dark text-white">
+                <div class="card-body">
+                    <h5 class="card-title">🎯 景点</h5>
+                    <h2 id="stat-destination">-</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-purple text-white" style="background:#6f42c1">
+                <div class="card-body">
+                    <h5 class="card-title">👤 用户</h5>
+                    <h2 id="stat-user">-</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 导航 -->
+    <ul class="nav nav-tabs mb-3" id="dataTabs" role="tablist">
+        <li class="nav-item"><a class="nav-link active" href="#" onclick="switchTab('province')">省份管理</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" onclick="switchTab('city')">城市管理</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" onclick="switchTab('food')">美食管理</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" onclick="switchTab('trip_plan')">行程模板</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" onclick="switchTab('review')">评论管理</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" onclick="switchTab('config')">站点配置</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" onclick="switchTab('navigation')">导航管理</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" onclick="switchTab('banner')">轮播图</a></li>
+    </ul>
+
+    <!-- 工具栏 -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <input type="text" id="searchInput" class="form-control d-inline-block" style="width:250px"
+                   placeholder="搜索..." onkeyup="handleSearch(event)">
+            <button class="btn btn-sm btn-outline-primary ms-2" onclick="loadData()">🔍 搜索</button>
+        </div>
+        <button class="btn btn-primary" onclick="openCreateModal()">➕ 新增</button>
+    </div>
+
+    <!-- 数据表格 -->
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="table-dark" id="tableHead"></thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <!-- 分页 -->
+    <nav id="pagination"></nav>
+</div>
+
+<!-- 新增/编辑 弹窗 -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">新增</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveItem()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let currentTab = 'province';
+let currentPage = 1;
+let editingId = null;
+
+// 表配置
+const TABLE_CONFIG = {
+    province: {
+        api: '/api/v2/provinces',
+        columns: ['id', 'name', 'code', 'cities_count', 'is_active', 'created_at'],
+        headers: ['ID', '名称', '代码', '城市数', '状态', '创建时间'],
+        fields: [
+            {key:'name', label:'名称', type:'text', required:true},
+            {key:'code', label:'行政区划代码', type:'text'},
+            {key:'description', label:'描述', type:'textarea'},
+            {key:'sort_order', label:'排序', type:'number', default:0},
+            {key:'is_active', label:'启用', type:'bool', default:true}
+        ]
+    },
+    city: {
+        api: '/api/v2/cities',
+        columns: ['id', 'name', 'province_name', 'city_type', 'is_active'],
+        headers: ['ID', '名称', '省份', '类型', '状态'],
+        fields: [
+            {key:'name', label:'名称', type:'text', required:true},
+            {key:'province_name', label:'省份', type:'text'},
+            {key:'city_type', label:'类型', type:'select', options:['直辖市','地级市','县级市','自治州','地区'], default:'地级市'},
+            {key:'description', label:'描述', type:'textarea'},
+            {key:'latitude', label:'纬度', type:'number'},
+            {key:'longitude', label:'经度', type:'number'},
+            {key:'is_active', label:'启用', type:'bool', default:true}
+        ]
+    },
+    food: {
+        api: '/api/v2/foods',
+        columns: ['id', 'name', 'city', 'category', 'price_range', 'rating', 'is_active'],
+        headers: ['ID', '名称', '城市', '分类', '价格', '评分', '状态'],
+        fields: [
+            {key:'name', label:'名称', type:'text', required:true},
+            {key:'city', label:'城市', type:'text'},
+            {key:'province', label:'省份', type:'text'},
+            {key:'category', label:'分类', type:'select', options:['小吃','正餐','甜品','饮品'], default:'正餐'},
+            {key:'description', label:'描述', type:'textarea'},
+            {key:'price_range', label:'价格范围', type:'text'},
+            {key:'restaurants', label:'推荐餐厅(逗号分隔)', type:'text'},
+            {key:'rating', label:'评分', type:'number', default:4.5},
+            {key:'is_active', label:'启用', type:'bool', default:true}
+        ]
+    },
+    trip_plan: {
+        api: '/api/v2/trip-plans',
+        columns: ['id', 'city', 'title', 'days', 'is_default', 'is_active'],
+        headers: ['ID', '城市', '标题', '天数', '默认', '状态'],
+        fields: [
+            {key:'city', label:'城市', type:'text', required:true},
+            {key:'province', label:'省份', type:'text'},
+            {key:'title', label:'标题', type:'text', required:true},
+            {key:'days', label:'天数', type:'number', default:1, required:true},
+            {key:'description', label:'描述', type:'textarea'},
+            {key:'itinerary', label:'行程安排(JSON数组)', type:'textarea'},
+            {key:'budget_estimate', label:'预算估计', type:'text'},
+            {key:'best_season', label:'最佳季节', type:'text'},
+            {key:'is_default', label:'默认模板', type:'bool', default:false},
+            {key:'is_active', label:'启用', type:'bool', default:true}
+        ]
+    },
+    review: {
+        api: '/api/v2/reviews',
+        columns: ['id', 'username', 'destination_name', 'rating', 'content', 'status', 'created_at'],
+        headers: ['ID', '用户', '景点', '评分', '内容', '状态', '时间'],
+        fields: [
+            {key:'content', label:'评论内容', type:'textarea', required:true},
+            {key:'rating', label:'评分(1-5)', type:'number', default:5},
+            {key:'status', label:'状态', type:'select', options:['approved','pending','rejected'], default:'approved'}
+        ],
+        readonly: true  // 评论只允许审核，不允许直接创建
+    },
+    config: {
+        api: '/api/v2/configs',
+        columns: ['id', 'key', 'value', 'label', 'group', 'is_public'],
+        headers: ['ID', 'Key', '值', '标签', '分组', '公开'],
+        fields: [
+            {key:'key', label:'配置Key', type:'text', required:true},
+            {key:'value', label:'值', type:'text'},
+            {key:'value_type', label:'值类型', type:'select', options:['string','int','float','bool','json'], default:'string'},
+            {key:'group', label:'分组', type:'select', options:['general','api','ui','email'], default:'general'},
+            {key:'label', label:'显示标签', type:'text'},
+            {key:'description', label:'描述', type:'textarea'},
+            {key:'is_public', label:'公开', type:'bool', default:false}
+        ]
+    },
+    navigation: {
+        api: '/api/v2/navigations',
+        columns: ['id', 'name', 'url', 'icon', 'position', 'sort_order', 'is_active'],
+        headers: ['ID', '名称', 'URL', '图标', '位置', '排序', '状态'],
+        fields: [
+            {key:'name', label:'名称', type:'text', required:true},
+            {key:'url', label:'URL', type:'text'},
+            {key:'icon', label:'图标(emoji)', type:'text'},
+            {key:'position', label:'位置', type:'select', options:['header','footer','sidebar'], default:'header'},
+            {key:'sort_order', label:'排序', type:'number', default:0},
+            {key:'is_active', label:'启用', type:'bool', default:true}
+        ]
+    },
+    banner: {
+        api: '/api/v2/banners',
+        columns: ['id', 'title', 'image_url', 'sort_order', 'is_active'],
+        headers: ['ID', '标题', '图片URL', '排序', '状态'],
+        fields: [
+            {key:'title', label:'标题', type:'text'},
+            {key:'image_url', label:'图片URL', type:'text', required:true},
+            {key:'link_url', label:'链接URL', type:'text'},
+            {key:'link_type', label:'链接类型', type:'select', options:['url','destination','food','trip'], default:'url'},
+            {key:'sort_order', label:'排序', type:'number', default:0},
+            {key:'is_active', label:'启用', type:'bool', default:true}
+        ]
+    }
+};
+
+// 初始化
+document.addEventListener('DOMContentLoaded', () => {
+    loadStats();
+    loadData();
+});
+
+// 加载统计数据
+async function loadStats() {
+    try {
+        const resp = await fetch('/api/v2/stats/database');
+        const data = await resp.json();
+        if (data.success) {
+            for (const [table, info] of Object.entries(data.data)) {
+                const el = document.getElementById('stat-' + table);
+                if (el) el.textContent = info.count >= 0 ? info.count : '-';
+            }
+        }
+    } catch(e) { console.error('加载统计失败:', e); }
+}
+
+// 切换 Tab
+function switchTab(tab) {
+    currentTab = tab;
+    currentPage = 1;
+    document.querySelectorAll('#dataTabs .nav-link').forEach(el => el.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('searchInput').value = '';
+    loadData();
+}
+
+// 加载数据
+async function loadData() {
+    const config = TABLE_CONFIG[currentTab];
+    if (!config) return;
+
+    const keyword = document.getElementById('searchInput').value;
+    let url = `${config.api}?page=${currentPage}&per_page=20`;
+    if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
+
+    try {
+        const resp = await fetch(url);
+        const data = await resp.json();
+        if (data.success) {
+            renderTable(config, data.data);
+            renderPagination(data.page, data.pages);
+        }
+    } catch(e) { console.error('加载数据失败:', e); }
+}
+
+// 渲染表格
+function renderTable(config, items) {
+    const thead = document.getElementById('tableHead');
+    const tbody = document.getElementById('tableBody');
+
+    thead.innerHTML = '<tr>' + config.headers.map(h => `<th>${h}</th>`).join('') + '<th>操作</th></tr>';
+
+    if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="' + (config.headers.length + 1) + '" class="text-center text-muted">暂无数据</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = items.map(item => {
+        const cells = config.columns.map(col => {
+            let val = item[col];
+            if (typeof val === 'boolean') val = val ? '✅' : '❌';
+            if (val === null || val === undefined) val = '-';
+            if (col === 'content' && val.length > 30) val = val.substring(0, 30) + '...';
+            if (col === 'status') {
+                const colors = {approved:'success', pending:'warning', rejected:'danger'};
+                val = `<span class="badge bg-${colors[val]||'secondary'}">${val}</span>`;
+            }
+            return `<td>${val}</td>`;
+        }).join('');
+
+        let actions = `<button class="btn btn-sm btn-outline-primary" onclick="openEditModal(${item.id})">✏️</button> `;
+        actions += `<button class="btn btn-sm btn-outline-danger" onclick="deleteItem(${item.id})">🗑️</button>`;
+
+        return `<tr>${cells}<td>${actions}</td></tr>`;
+    }).join('');
+}
+
+// 渲染分页
+function renderPagination(page, pages) {
+    const nav = document.getElementById('pagination');
+    if (pages <= 1) { nav.innerHTML = ''; return; }
+
+    let html = '<ul class="pagination">';
+    html += `<li class="page-item ${page<=1?'disabled':''}"><a class="page-link" href="#" onclick="goPage(${page-1})">上一页</a></li>`;
+    for (let i = 1; i <= Math.min(pages, 10); i++) {
+        html += `<li class="page-item ${i===page?'active':''}"><a class="page-link" href="#" onclick="goPage(${i})">${i}</a></li>`;
+    }
+    html += `<li class="page-item ${page>=pages?'disabled':''}"><a class="page-link" href="#" onclick="goPage(${page+1})">下一页</a></li>`;
+    html += '</ul>';
+    nav.innerHTML = html;
+}
+
+function goPage(p) { currentPage = p; loadData(); }
+function handleSearch(e) { if (e.key === 'Enter') loadData(); }
+
+// 打开新建弹窗
+function openCreateModal() {
+    const config = TABLE_CONFIG[currentTab];
+    if (config.readonly) { alert('此数据只允许编辑，不允许新建'); return; }
+    editingId = null;
+    document.getElementById('modalTitle').textContent = '新增 - ' + currentTab;
+    renderForm(config.fields, {});
+    new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+
+// 打开编辑弹窗
+async function openEditModal(id) {
+    const config = TABLE_CONFIG[currentTab];
+    editingId = id;
+    document.getElementById('modalTitle').textContent = '编辑 - ' + currentTab + ' #' + id;
+
+    try {
+        let url = config.api + '/' + id;
+        // configs 用 key 而不是 id
+        if (currentTab === 'config') {
+            // 先获取数据找到 key
+            const resp = await fetch(config.api);
+            const data = await resp.json();
+            const item = data.data.find(i => i.id === id);
+            if (item) {
+                renderForm(config.fields, item);
+                new bootstrap.Modal(document.getElementById('editModal')).show();
+                return;
+            }
+        }
+        const resp = await fetch(url);
+        const data = await resp.json();
+        renderForm(config.fields, data.data || {});
+        new bootstrap.Modal(document.getElementById('editModal')).show();
+    } catch(e) { console.error('加载详情失败:', e); }
+}
+
+// 渲染表单
+function renderForm(fields, data) {
+    const body = document.getElementById('modalBody');
+    body.innerHTML = fields.map(f => {
+        const val = data[f.key] !== undefined ? data[f.key] : (f.default || '');
+        let input = '';
+
+        if (f.type === 'textarea') {
+            input = `<textarea class="form-control" id="field_${f.key}" rows="3">${val}</textarea>`;
+        } else if (f.type === 'bool') {
+            input = `<select class="form-select" id="field_${f.key}">
+                <option value="true" ${val ? 'selected' : ''}>是</option>
+                <option value="false" ${!val && val !== '' ? 'selected' : ''}>否</option>
+            </select>`;
+        } else if (f.type === 'select') {
+            input = `<select class="form-select" id="field_${f.key}">
+                ${f.options.map(o => `<option ${o===val?'selected':''}>${o}</option>`).join('')}
+            </select>`;
+        } else {
+            input = `<input type="${f.type==='number'?'number':'text'}" class="form-control" id="field_${f.key}" value="${val}">`;
+        }
+
+        return `<div class="mb-3">
+            <label class="form-label">${f.label}${f.required?' <span class="text-danger">*</span>':''}</label>
+            ${input}
+        </div>`;
+    }).join('');
+}
+
+// 保存
+async function saveItem() {
+    const config = TABLE_CONFIG[currentTab];
+    const data = {};
+
+    for (const f of config.fields) {
+        const el = document.getElementById('field_' + f.key);
+        if (!el) continue;
+        let val = el.value;
+        if (f.type === 'bool') val = val === 'true';
+        else if (f.type === 'number') val = val ? Number(val) : null;
+        if (f.required && !val) { alert(f.label + '不能为空'); return; }
+        data[f.key] = val;
+    }
+
+    // 处理 restaurants 字段
+    if (data.restaurants && typeof data.restaurants === 'string') {
+        data.restaurants = data.restaurants.split(',').map(s => s.trim()).filter(Boolean);
+    }
+
+    try {
+        let url, method;
+        if (editingId) {
+            url = config.api + '/' + editingId;
+            method = 'PUT';
+        } else {
+            url = config.api;
+            method = 'POST';
+        }
+
+        const resp = await fetch(url, {
+            method: method,
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        const result = await resp.json();
+
+        if (result.success) {
+            alert(result.message || '操作成功');
+            bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+            loadData();
+            loadStats();
+        } else {
+            alert('失败: ' + (result.error || '未知错误'));
+        }
+    } catch(e) { alert('请求失败: ' + e.message); }
+}
+
+// 删除
+async function deleteItem(id) {
+    if (!confirm('确定删除 #' + id + ' ？')) return;
+    const config = TABLE_CONFIG[currentTab];
+
+    try {
+        const resp = await fetch(config.api + '/' + id, {method: 'DELETE'});
+        const result = await resp.json();
+        if (result.success) {
+            loadData();
+            loadStats();
+        } else {
+            alert('删除失败: ' + (result.error || ''));
+        }
+    } catch(e) { alert('请求失败: ' + e.message); }
+}
+</script>
+{% endblock %}
