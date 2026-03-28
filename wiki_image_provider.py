@@ -13,8 +13,8 @@ class WikiImageProvider:
     """维基百科图片提供者"""
     
     def __init__(self):
-        self.cache_dir = Path("wiki_cache")
-        self.cache_dir.mkdir(exist_ok=True)
+        self.cache_dir = Path(__file__).parent / "wiki_cache"
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.cache_ttl = 86400  # 24小时缓存
         
     def _get_cache_key(self, query):
