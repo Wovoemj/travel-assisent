@@ -8478,6 +8478,43 @@ def admin_settings():
     """系统设置"""
     return render_template('admin/settings.html')
 
+@app.route('/admin/provinces')
+@admin_login_required
+def admin_provinces():
+    """省份管理"""
+    return render_template('admin/provinces.html')
+
+@app.route('/admin/cities')
+@admin_login_required
+def admin_cities():
+    """城市管理"""
+    provinces = Province.query.order_by(Province.sort_order).all()
+    return render_template('admin/cities.html', provinces=[p.to_dict() for p in provinces])
+
+@app.route('/admin/foods')
+@admin_login_required
+def admin_foods():
+    """美食管理"""
+    return render_template('admin/foods.html')
+
+@app.route('/admin/trip-plans')
+@admin_login_required
+def admin_trip_plans():
+    """行程模板管理"""
+    return render_template('admin/trip_plans.html')
+
+@app.route('/admin/banners')
+@admin_login_required
+def admin_banners():
+    """轮播图管理"""
+    return render_template('admin/banners.html')
+
+@app.route('/admin/navigations')
+@admin_login_required
+def admin_navigations():
+    """导航菜单管理"""
+    return render_template('admin/navigations.html')
+
 # ==================== 管理员管理API ====================
 @app.route('/api/admins/add', methods=['POST'])
 @admin_login_required
@@ -8984,11 +9021,167 @@ def init_db():
         # 检查是否需要更新
         check_and_update_destinations()
 
+    # 初始化扩展数据（省份/城市/美食/行程/配置/导航/轮播）
+    _init_extended_data()
+
     # 初始化用户数据
     init_user_data()
 
     # 初始化管理员
     init_admin()
+
+
+def _init_extended_data():
+    """初始化扩展数据 - 省份/城市/美食/行程/配置/导航/轮播"""
+    print("\n📦 检查扩展数据...")
+
+    # 1. 省份
+    if Province.query.count() == 0:
+        print("   📍 导入省份数据...")
+        for i, name in enumerate(ALL_PROVINCES):
+            db.session.add(Province(name=name, sort_order=i, is_active=True))
+        db.session.commit()
+        print(f"   ✅ 导入 {Province.query.count()} 个省份")
+
+    # 2. 城市
+    if City.query.count() == 0:
+        print("   🏙️ 导入城市数据...")
+        province_map = {p.name: p.id for p in Province.query.all()}
+        count = 0
+        for city_name in ALL_CITIES:
+            clean_name = city_name.replace('市', '').replace('地区', '').replace('林区', '')
+            prov_name = CITY_TO_PROVINCE.get(city_name, '')
+            if city_name in ['北京', '上海', '天津', '重庆']:
+                city_type = '直辖市'
+                prov_name = city_name
+            elif '自治州' in city_name:
+                city_type = '自治州'
+            elif '地区' in city_name:
+                city_type = '地区'
+            else:
+                city_type = '地级市'
+            prov_id = province_map.get(prov_name)
+            db.session.add(City(name=clean_name, province_id=prov_id,
+                                province_name=prov_name, city_type=city_type, is_active=True))
+            count += 1
+            if count % 50 == 0:
+                db.session.commit()
+        db.session.commit()
+        print(f"   ✅ 导入 {count} 个城市")
+
+    # 3. 美食
+    if Food.query.count() == 0:
+        print("   🍜 导入美食数据...")
+        count = 0
+        for location, foods in FOOD_DATABASE.items():
+            for food_data in foods:
+                restaurants = food_data.get('restaurants', [])
+                f = Food(
+                    name=food_data['name'], city=location,
+                    province=location if location in ALL_PROVINCES else '',
+                    description=food_data.get('description', ''),
+                    price_range=food_data.get('price', ''),
+                    restaurants=json.dumps(restaurants, ensure_ascii=False),
+                    category='正餐', rating=round(random.uniform(4.0, 5.0), 1),
+                    popularity_score=round(random.uniform(40, 90), 1), is_active=True
+                )
+                db.session.add(f)
+                count += 1
+                if count % 50 == 0:
+                    db.session.commit()
+        db.session.commit()
+        print(f"   ✅ 导入 {count} 条美食")
+
+    # 4. 行程模板
+    if TripPlan.query.count() == 0:
+        print("   🗺️ 导入行程模板...")
+        count = 0
+        for city, plans in TRIP_PLANS.items():
+            for day_key, items in plans.items():
+                days = 1
+                for d in range(1, 8):
+                    if f'{d}日游' in day_key:
+                        days = d
+                        break
+                db.session.add(TripPlan(
+                    city=city, province=CITY_TO_PROVINCE.get(city, ''),
+                    title=f'{city}{day_key}', days=days,
+                    description=f'{city}{day_key}推荐行程',
+                    itinerary=json.dumps(items, ensure_ascii=False),
+                    is_default=False, is_active=True
+                ))
+                count += 1
+        for day_key, items in DEFAULT_TRIP_PLANS.items():
+            days = 1
+            for d in range(1, 8):
+                if f'{d}日游' in day_key:
+                    days = d
+                    break
+            db.session.add(TripPlan(
+                city='通用', title=f'通用{day_key}', days=days,
+                description=f'通用{day_key}模板',
+                itinerary=json.dumps(items, ensure_ascii=False),
+                is_default=True, is_active=True
+            ))
+            count += 1
+        db.session.commit()
+        print(f"   ✅ 导入 {count} 条行程模板")
+
+    # 5. 站点配置
+    if SiteConfig.query.count() == 0:
+        print("   ⚙️ 初始化站点配置...")
+        configs = [
+            {'key': 'site_name', 'value': '智能旅游助手', 'label': '站点名称', 'group': 'general', 'is_public': True},
+            {'key': 'site_description', 'value': '您的智能旅行伙伴', 'label': '站点描述', 'group': 'general', 'is_public': True},
+            {'key': 'contact_email', 'value': 'admin@travel.com', 'label': '联系邮箱', 'group': 'general', 'is_public': True},
+            {'key': 'contact_phone', 'value': '400-123-4567', 'label': '联系电话', 'group': 'general', 'is_public': True},
+            {'key': 'enable_register', 'value': 'true', 'value_type': 'bool', 'label': '开放注册', 'group': 'general'},
+            {'key': 'enable_chat', 'value': 'true', 'value_type': 'bool', 'label': '智能助手', 'group': 'general'},
+            {'key': 'enable_review', 'value': 'true', 'value_type': 'bool', 'label': '评论功能', 'group': 'general'},
+            {'key': 'default_page_size', 'value': '12', 'value_type': 'int', 'label': '默认每页条数', 'group': 'ui'},
+        ]
+        for cfg in configs:
+            db.session.add(SiteConfig(
+                key=cfg['key'], value=cfg['value'],
+                value_type=cfg.get('value_type', 'string'),
+                group=cfg.get('group', 'general'),
+                label=cfg.get('label', cfg['key']),
+                is_public=cfg.get('is_public', False)
+            ))
+        db.session.commit()
+        print(f"   ✅ 初始化 {SiteConfig.query.count()} 条配置")
+
+    # 6. 导航菜单
+    if Navigation.query.count() == 0:
+        print("   📋 初始化导航菜单...")
+        navs = [
+            {'name': '首页', 'url': '/', 'icon': '🏠', 'sort_order': 1, 'position': 'header'},
+            {'name': '热门景点', 'url': '/?view=hot', 'icon': '🔥', 'sort_order': 2, 'position': 'header'},
+            {'name': '智能助手', 'url': '/chat', 'icon': '🤖', 'sort_order': 3, 'position': 'header'},
+            {'name': '关于我们', 'url': '/about', 'icon': 'ℹ️', 'sort_order': 4, 'position': 'header'},
+        ]
+        for nav in navs:
+            db.session.add(Navigation(
+                name=nav['name'], url=nav['url'], icon=nav.get('icon', ''),
+                sort_order=nav.get('sort_order', 0), position=nav.get('position', 'header'),
+                is_active=True
+            ))
+        db.session.commit()
+        print(f"   ✅ 初始化 {Navigation.query.count()} 条导航")
+
+    # 7. 轮播图
+    if Banner.query.count() == 0:
+        print("   🖼️ 初始化轮播图...")
+        for i, title in enumerate(['探索中国美景', '智能行程规划', '发现特色美食'], 1):
+            db.session.add(Banner(title=title, image_url=f'/static/images/banner{i}.jpg',
+                                  sort_order=i, is_active=True))
+        db.session.commit()
+        print(f"   ✅ 初始化 {Banner.query.count()} 条轮播图")
+
+    # 汇总
+    print(f"\n   📊 数据汇总: 省份{Province.query.count()} | 城市{City.query.count()} | "
+          f"美食{Food.query.count()} | 行程{TripPlan.query.count()} | "
+          f"景点{Destination.query.count()} | 用户{User.query.count()}")
 
 def cleanup(signum, frame):
     """退出时清理"""

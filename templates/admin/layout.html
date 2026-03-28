@@ -131,6 +131,26 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin_provinces' %}active{% endif %}" href="{{ url_for('admin_provinces') }}">
+                    <i class="fas fa-globe-asia"></i>省份管理
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin_cities' %}active{% endif %}" href="{{ url_for('admin_cities') }}">
+                    <i class="fas fa-city"></i>城市管理
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin_foods' %}active{% endif %}" href="{{ url_for('admin_foods') }}">
+                    <i class="fas fa-utensils"></i>美食管理
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin_trip_plans' %}active{% endif %}" href="{{ url_for('admin_trip_plans') }}">
+                    <i class="fas fa-route"></i>行程管理
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link {% if request.endpoint == 'admin_users' %}active{% endif %}" href="{{ url_for('admin_users') }}">
                     <i class="fas fa-users"></i>用户管理
                 </a>
@@ -138,6 +158,16 @@
             <li class="nav-item">
                 <a class="nav-link {% if request.endpoint == 'admin_reviews' %}active{% endif %}" href="{{ url_for('admin_reviews') }}">
                     <i class="fas fa-star"></i>评论管理
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin_banners' %}active{% endif %}" href="{{ url_for('admin_banners') }}">
+                    <i class="fas fa-images"></i>轮播图管理
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin_navigations' %}active{% endif %}" href="{{ url_for('admin_navigations') }}">
+                    <i class="fas fa-bars"></i>导航管理
                 </a>
             </li>
             <li class="nav-item">

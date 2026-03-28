@@ -1,0 +1,203 @@
+{% extends 'admin/layout.html' %}
+{% block page_title %}城市管理{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0"><i class="fas fa-city me-2"></i>城市管理</h4>
+    <button class="btn btn-primary" onclick="showAddModal()"><i class="fas fa-plus me-1"></i>添加城市</button>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <input type="text" class="form-control" id="searchKeyword" placeholder="搜索城市名..." onkeyup="loadCities(1)">
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="filterProvince" onchange="loadCities(1)">
+                    <option value="">全部省份</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table mb-0">
+            <thead>
+                <tr><th>ID</th><th>城市名</th><th>省份</th><th>类型</th><th>状态</th><th>操作</th></tr>
+            </thead>
+            <tbody id="cityBody"></tbody>
+        </table>
+    </div>
+    <div class="card-footer bg-white d-flex justify-content-between">
+        <span class="text-muted" id="totalCount"></span>
+        <div id="pagination"></div>
+    </div>
+</div>
+
+<div class="modal fade" id="cityModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">添加城市</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editId">
+                <div class="mb-3">
+                    <label class="form-label">城市名称 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="inputName" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">所属省份 <span class="text-danger">*</span></label>
+                    <select class="form-select" id="inputProvince"></select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">类型</label>
+                    <select class="form-select" id="inputType">
+                        <option value="地级市">地级市</option>
+                        <option value="直辖市">直辖市</option>
+                        <option value="县级市">县级市</option>
+                        <option value="自治州">自治州</option>
+                        <option value="地区">地区</option>
+                    </select>
+                </div>
+                <div class="row">
+                    <div class="col-6 mb-3">
+                        <label class="form-label">纬度</label>
+                        <input type="number" step="0.0001" class="form-control" id="inputLat">
+                    </div>
+                    <div class="col-6 mb-3">
+                        <label class="form-label">经度</label>
+                        <input type="number" step="0.0001" class="form-control" id="inputLng">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">描述</label>
+                    <textarea class="form-control" id="inputDesc" rows="2"></textarea>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="inputActive" checked>
+                    <label class="form-check-label">启用</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveCity()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let provinces = [];
+async function init() {
+    const res = await fetch('/api/v2/provinces?per_page=100');
+    const data = await res.json();
+    if (data.success) {
+        provinces = data.data;
+        const sel = document.getElementById('inputProvince');
+        const sel2 = document.getElementById('filterProvince');
+        provinces.forEach(p => {
+            sel.innerHTML += `<option value="${p.id}" data-name="${p.name}">${p.name}</option>`;
+            sel2.innerHTML += `<option value="${p.name}">${p.name}</option>`;
+        });
+    }
+    loadCities(1);
+}
+
+let currentPage=1;
+async function loadCities(page) {
+    currentPage = page;
+    const keyword = document.getElementById('searchKeyword').value;
+    const province = document.getElementById('filterProvince').value;
+    let url = `/api/v2/cities?page=${page}&per_page=20`;
+    if (keyword) url += `&keyword=${keyword}`;
+    if (province) url += `&province=${province}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data.success) return;
+    document.getElementById('cityBody').innerHTML = data.data.map(c => `
+        <tr>
+            <td>${c.id}</td>
+            <td><strong>${c.name}</strong></td>
+            <td>${c.province_name || '-'}</td>
+            <td><span class="badge bg-info">${c.city_type}</span></td>
+            <td><span class="badge bg-${c.is_active?'success':'secondary'}">${c.is_active?'启用':'禁用'}</span></td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary btn-action" onclick="editCity(${c.id})"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-sm btn-outline-danger btn-action" onclick="deleteCity(${c.id},'${c.name}')"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>
+    `).join('');
+    document.getElementById('totalCount').textContent = `共 ${data.total} 条`;
+}
+
+function showAddModal() {
+    document.getElementById('modalTitle').textContent = '添加城市';
+    document.getElementById('editId').value = '';
+    document.getElementById('inputName').value = '';
+    document.getElementById('inputProvince').value = '';
+    document.getElementById('inputType').value = '地级市';
+    document.getElementById('inputLat').value = '';
+    document.getElementById('inputLng').value = '';
+    document.getElementById('inputDesc').value = '';
+    document.getElementById('inputActive').checked = true;
+    new bootstrap.Modal(document.getElementById('cityModal')).show();
+}
+
+async function editCity(id) {
+    const res = await fetch(`/api/v2/cities/${id}`);
+    const data = await res.json();
+    if (!data.success) return alert('加载失败');
+    const c = data.data;
+    document.getElementById('modalTitle').textContent = '编辑城市';
+    document.getElementById('editId').value = c.id;
+    document.getElementById('inputName').value = c.name;
+    document.getElementById('inputProvince').value = c.province_id || '';
+    document.getElementById('inputType').value = c.city_type;
+    document.getElementById('inputLat').value = c.latitude || '';
+    document.getElementById('inputLng').value = c.longitude || '';
+    document.getElementById('inputDesc').value = c.description || '';
+    document.getElementById('inputActive').checked = c.is_active;
+    new bootstrap.Modal(document.getElementById('cityModal')).show();
+}
+
+async function saveCity() {
+    const id = document.getElementById('editId').value;
+    const provSel = document.getElementById('inputProvince');
+    const body = {
+        name: document.getElementById('inputName').value,
+        province_id: parseInt(provSel.value) || null,
+        province_name: provSel.options[provSel.selectedIndex]?.text || '',
+        city_type: document.getElementById('inputType').value,
+        latitude: parseFloat(document.getElementById('inputLat').value) || null,
+        longitude: parseFloat(document.getElementById('inputLng').value) || null,
+        description: document.getElementById('inputDesc').value,
+        is_active: document.getElementById('inputActive').checked
+    };
+    if (!body.name) return alert('请输入城市名称');
+    const url = id ? `/api/v2/cities/${id}` : '/api/v2/cities';
+    const method = id ? 'PUT' : 'POST';
+    const res = await fetch(url, {method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+    const data = await res.json();
+    if (data.success) {
+        bootstrap.Modal.getInstance(document.getElementById('cityModal')).hide();
+        loadCities(currentPage);
+    } else alert(data.error||'保存失败');
+}
+
+async function deleteCity(id, name) {
+    if (!confirm(`确定删除城市「${name}」？`)) return;
+    const res = await fetch(`/api/v2/cities/${id}`, {method:'DELETE'});
+    const data = await res.json();
+    if (data.success) loadCities(currentPage);
+    else alert(data.error||'删除失败');
+}
+
+init();
+</script>
+{% endblock %}
