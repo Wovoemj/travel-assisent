@@ -32,11 +32,14 @@ from functools import wraps
 try:
     from flask_compress import Compress
     COMPRESS_AVAILABLE = True
-    print("✅ Flask-Compress已加载，响应压缩功能可用")
+    log.info("✅ Flask-Compress已加载，响应压缩功能可用")
 except ImportError:
     COMPRESS_AVAILABLE = False
-    print("⚠️ Flask-Compress未安装，响应压缩功能不可用")
-    print("   请运行: pip install flask-compress")
+    log.warning("⚠️ Flask-Compress未安装，响应压缩功能不可用")
+    log.info("   请运行: pip install flask-compress")
+
+# 导入日志系统
+from services.logger import log
 
 # 导入配置
 from config import Config
@@ -55,7 +58,7 @@ def load_destinations_from_json():
     """从destinations.json文件加载景点数据"""
     json_path = Path("destinations.json")
     if not json_path.exists():
-        print(f"⚠️ 警告: {json_path} 文件不存在，使用空数据")
+        log.warning(f"⚠️ 警告: {json_path} 文件不存在，使用空数据")
         return []
 
     try:
@@ -66,10 +69,10 @@ def load_destinations_from_json():
             content = re.sub(r'//.*?(\n|$)', '\n', content)
             content = re.sub(r'/\*.*?\*/', '', content, flags=re.DOTALL)
             data = json.loads(content)
-            print(f"✅ 从 {json_path} 加载了 {len(data)} 条景点数据")
+            log.info(f"✅ 从 {json_path} 加载了 {len(data)} 条景点数据")
             return data
     except Exception as e:
-        print(f"❌ 加载 {json_path} 失败: {e}")
+        log.error(f"❌ 加载 {json_path} 失败: {e}")
         return []
 
 # 加载JSON数据
@@ -88,7 +91,7 @@ def load_background_images_from_folder():
 
     # 检查文件夹是否存在
     if not SCENIC_IMAGES_DIR.exists() or not SCENIC_IMAGES_DIR.is_dir():
-        print(f"⚠️ 警告: 文件夹 {SCENIC_IMAGES_DIR} 不存在或不是目录，使用默认图片")
+        log.warning(f"⚠️ 警告: 文件夹 {SCENIC_IMAGES_DIR} 不存在或不是目录，使用默认图片")
         # 返回一个默认图片，防止程序崩溃
         return [{
             'url': '/static/images/default-bg.jpg',
@@ -96,7 +99,7 @@ def load_background_images_from_folder():
             'location': '未知'
         }]
 
-    print(f"📁 正在从 {SCENIC_IMAGES_DIR} 加载背景图片...")
+    log.info(f"📁 正在从 {SCENIC_IMAGES_DIR} 加载背景图片...")
 
     # 遍历所有子文件夹
     folder_count = 0
@@ -125,14 +128,14 @@ def load_background_images_from_folder():
 
     # 如果没有找到任何图片，添加默认图片
     if not background_images:
-        print(f"⚠️ 警告: 在 {SCENIC_IMAGES_DIR} 中没有找到任何图片，使用默认图片")
+        log.warning(f"⚠️ 警告: 在 {SCENIC_IMAGES_DIR} 中没有找到任何图片，使用默认图片")
         background_images.append({
             'url': '/static/images/default-bg.jpg',
             'name': '默认背景',
             'location': '未知'
         })
     else:
-        print(f"✅ 成功从 {folder_count} 个文件夹加载 {len(background_images)} 张背景图片")
+        log.info(f"✅ 成功从 {folder_count} 个文件夹加载 {len(background_images)} 张背景图片")
 
     return background_images
 
@@ -168,7 +171,7 @@ def _build_image_cache():
                 short = name.replace(suffix, '')
                 if short and short not in cache:
                     cache[short] = f'/static/scenic_images/{name}/{images[0].name}'
-    print(f"✅ 图片缓存构建完成: {len(cache)} 个索引")
+    log.info(f"✅ 图片缓存构建完成: {len(cache)} 个索引")
     _IMAGE_CACHE = cache
     return cache
 
@@ -247,7 +250,7 @@ def update_destinations_with_images():
             updated_count += 1
     if updated_count > 0:
         db.session.commit()
-        print(f"✅ 已更新 {updated_count} 个景点的图片")
+        log.info(f"✅ 已更新 {updated_count} 个景点的图片")
 
 # ==================== 社交登录导入 ====================
 from utils.social_login import (
@@ -269,19 +272,19 @@ try:
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
     PDF_AVAILABLE = True
-    print("✅ ReportLab库已加载，PDF导出功能可用")
+    log.info("✅ ReportLab库已加载，PDF导出功能可用")
 except ImportError:
     PDF_AVAILABLE = False
-    print("⚠️ ReportLab库未安装，PDF导出功能不可用")
-    print("   请运行: pip install reportlab")
+    log.warning("⚠️ ReportLab库未安装，PDF导出功能不可用")
+    log.info("   请运行: pip install reportlab")
 
 try:
     from PIL import Image, ImageDraw, ImageFont, ImageFilter
     PIL_AVAILABLE = True
-    print("✅ Pillow库已加载，图片导出功能可用")
+    log.info("✅ Pillow库已加载，图片导出功能可用")
 except ImportError:
     PIL_AVAILABLE = False
-    print("⚠️ Pillow库未安装，图片导出功能受限")
+    log.warning("⚠️ Pillow库未安装，图片导出功能受限")
 
 # ==================== 配置 ====================
 # 心知天气Key
@@ -321,9 +324,9 @@ if COMPRESS_AVAILABLE:
     app.config['COMPRESS_LEVEL'] = 6  # 压缩级别 (1-9, 6是平衡点)
     app.config['COMPRESS_MIN_SIZE'] = 500  # 最小压缩大小(字节)
     Compress(app)
-    print("✅ 响应压缩已启用")
+    log.info("✅ 响应压缩已启用")
 else:
-    print("⚠️ 响应压缩未启用，使用默认响应")
+    log.warning("⚠️ 响应压缩未启用，使用默认响应")
 
 
 
@@ -367,9 +370,9 @@ try:
 
     eventlet.monkey_patch()
     socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
-    print("✅ 使用 eventlet 模式，已修复 ssl 兼容性")
+    log.info("✅ 使用 eventlet 模式，已修复 ssl 兼容性")
 except (ImportError, AttributeError) as e:
-    print(f"⚠️ eventlet 初始化失败: {e}，使用 threading 模式")
+    log.warning(f"⚠️ eventlet 初始化失败: {e}，使用 threading 模式")
     socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 # ==================== 数据库模型 ====================
@@ -2153,7 +2156,7 @@ class TravelAssistant:
         if cache_key in self._destinations_cache:
             cached_time, cached_data = self._destinations_cache[cache_key]
             if current_time - cached_time < self._cache_ttl:
-                print(f"✅ 使用缓存的景点详情: {name}")
+                log.info(f"✅ 使用缓存的景点详情: {name}")
                 return cached_data
         
         # 缓存未命中，查询数据库
@@ -2166,7 +2169,7 @@ class TravelAssistant:
         if weather_cache_key in self._destinations_cache:
             weather_time, weather_info = self._destinations_cache[weather_cache_key]
             if current_time - weather_time < 300:  # 天气缓存5分钟
-                print(f"✅ 使用缓存的天气信息: {dest.city}")
+                log.info(f"✅ 使用缓存的天气信息: {dest.city}")
             else:
                 weather_info = weather_api.get_current_weather(dest.city)
                 self._destinations_cache[weather_cache_key] = (current_time, weather_info)
@@ -2231,7 +2234,7 @@ class TravelAssistant:
         
         # 保存到缓存
         self._destinations_cache[cache_key] = (current_time, result)
-        print(f"✅ 景点详情已缓存: {name}")
+        log.info(f"✅ 景点详情已缓存: {name}")
         
         return result
     
@@ -2331,7 +2334,7 @@ class TravelAssistant:
                         
                         return route_content
             except Exception as e:
-                print(f"高德路线API调用失败: {e}")
+                log.info(f"高德路线API调用失败: {e}")
         
         # 降级到模拟数据
         import random
@@ -2429,7 +2432,7 @@ class TravelAssistant:
             return f"/static/generated_cards/{image_filename}"
             
         except Exception as e:
-            print(f"生成图片失败: {e}")
+            log.info(f"生成图片失败: {e}")
             return None
 
     def get_personalized_recommendations(self, user_id, limit=5):
@@ -2523,7 +2526,7 @@ class TravelAssistant:
                 }
                 
             except Exception as e:
-                print(f"AI模型调用失败: {e}")
+                log.info(f"AI模型调用失败: {e}")
                 # 降级到规则匹配模式
                 response = self._rule_based_response(message, session_id, user_id)
         else:
@@ -2916,7 +2919,7 @@ class TravelAssistant:
                 self.save_conversation(session_id)
                 
             except Exception as e:
-                print(f"AI模型流式调用失败: {e}")
+                log.info(f"AI模型流式调用失败: {e}")
                 # 降级到规则匹配模式
                 response = self._rule_based_response(message, session_id, user_id)
                 yield response.get('content', '')
@@ -2947,7 +2950,7 @@ class TravelAssistant:
             self.ai_mode_enabled = enabled
         
         mode = "AI大模型模式" if self.ai_mode_enabled else "规则匹配模式"
-        print(f"✅ 已切换到: {mode}")
+        log.info(f"✅ 已切换到: {mode}")
         return self.ai_mode_enabled
     
     def get_ai_mode_status(self):
@@ -3285,16 +3288,16 @@ def api_login():
     password = data.get('password', '')
     remember = data.get('remember', False)
 
-    print(f"登录尝试 - 账号: {account}")
+    log.info(f"登录尝试 - 账号: {account}")
 
     user = User.query.filter(
         or_(User.username == account, User.email == account)
     ).first()
 
     if user:
-        print(f"找到用户: {user.username}")
+        log.info(f"找到用户: {user.username}")
         if user.check_password(password):
-            print("密码正确")
+            log.info("密码正确")
             session.permanent = remember
             session['user_id'] = user.id
             session['username'] = user.username
@@ -3302,9 +3305,9 @@ def api_login():
             db.session.commit()
             return jsonify({'success': True, 'message': '登录成功', 'user': user.to_dict()})
         else:
-            print("密码错误")
+            log.info("密码错误")
     else:
-        print("用户不存在")
+        log.info("用户不存在")
 
     return jsonify({'success': False, 'error': '用户名或密码错误'}), 401
 
@@ -3386,7 +3389,7 @@ def wechat_callback():
         db.session.commit()
         return redirect('/')
     except Exception as e:
-        print(f"微信登录错误: {e}")
+        log.info(f"微信登录错误: {e}")
         return redirect('/login-page')
 
 
@@ -3434,7 +3437,7 @@ def qq_callback():
         db.session.commit()
         return redirect('/')
     except Exception as e:
-        print(f"QQ登录错误: {e}")
+        log.info(f"QQ登录错误: {e}")
         return redirect('/login-page')
 
 
@@ -3478,7 +3481,7 @@ def weibo_callback():
         db.session.commit()
         return redirect('/')
     except Exception as e:
-        print(f"微博登录错误: {e}")
+        log.info(f"微博登录错误: {e}")
         return redirect('/login-page')
 
 
@@ -3496,7 +3499,7 @@ def send_verification_code():
         'code': code,
         'expire': datetime.now() + timedelta(minutes=5)
     }
-    print(f"验证码 [{phone}]: {code}")
+    log.info(f"验证码 [{phone}]: {code}")
     return jsonify({'success': True, 'message': '验证码已发送', 'debug_code': code})
 
 
@@ -3536,7 +3539,7 @@ def login_with_code():
             return jsonify({'success': False, 'error': '验证码已过期'}), 400
             
     except Exception as e:
-        print(f"验证码时间比较错误: {e}")
+        log.info(f"验证码时间比较错误: {e}")
         import traceback
         traceback.print_exc()
         # 如果时间比较出错，清除验证码并返回错误
@@ -3564,7 +3567,7 @@ def login_with_code():
         user.last_login = datetime.now()
         db.session.commit()
     except Exception as e:
-        print(f"更新登录时间失败: {e}")
+        log.info(f"更新登录时间失败: {e}")
     
     # 清除验证码
     session.pop(f'code_{phone}', None)
@@ -3843,7 +3846,7 @@ def like_destination(dest_id):
         
     except Exception as e:
         db.session.rollback()
-        print(f"点赞操作错误: {e}")
+        log.info(f"点赞操作错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -3896,7 +3899,7 @@ def checkin_destination(dest_id):
         
     except Exception as e:
         db.session.rollback()
-        print(f"签到错误: {e}")
+        log.info(f"签到错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -3950,7 +3953,7 @@ def follow_user(user_id):
         
     except Exception as e:
         db.session.rollback()
-        print(f"关注操作错误: {e}")
+        log.info(f"关注操作错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -4000,7 +4003,7 @@ def get_user_profile(user_id):
         })
         
     except Exception as e:
-        print(f"获取用户资料错误: {e}")
+        log.info(f"获取用户资料错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -4035,7 +4038,7 @@ def get_destination_checkins(dest_id):
         })
         
     except Exception as e:
-        print(f"获取签到记录错误: {e}")
+        log.info(f"获取签到记录错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -4064,7 +4067,7 @@ def get_liked_destinations():
         })
         
     except Exception as e:
-        print(f"获取点赞景点错误: {e}")
+        log.info(f"获取点赞景点错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -4098,7 +4101,7 @@ def get_user_checkins():
         })
         
     except Exception as e:
-        print(f"获取签到记录错误: {e}")
+        log.info(f"获取签到记录错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -4133,7 +4136,7 @@ def get_user_following():
         })
         
     except Exception as e:
-        print(f"获取关注列表错误: {e}")
+        log.info(f"获取关注列表错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -4168,7 +4171,7 @@ def get_user_followers():
         })
         
     except Exception as e:
-        print(f"获取粉丝列表错误: {e}")
+        log.info(f"获取粉丝列表错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -4285,7 +4288,7 @@ def batch_update_provinces():
 
             time.sleep(0.2)  # 限流
         except Exception as e:
-            print(f"更新失败 {dest.name}: {e}")
+            log.info(f"更新失败 {dest.name}: {e}")
             failed += 1
 
     db.session.commit()
@@ -5055,7 +5058,7 @@ def api_search_suggestions():
         return jsonify({'success': True, 'suggestions': suggestions})
 
     except Exception as e:
-        print(f"搜索建议错误: {e}")
+        log.info(f"搜索建议错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -5140,7 +5143,7 @@ def api_personalized_recommendations():
         })
 
     except Exception as e:
-        print(f"个性化推荐错误: {e}")
+        log.info(f"个性化推荐错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -5230,7 +5233,7 @@ def api_collaborative_recommendations():
         })
 
     except Exception as e:
-        print(f"协同过滤推荐错误: {e}")
+        log.info(f"协同过滤推荐错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -5270,7 +5273,7 @@ def api_hot_recommendations():
         })
 
     except Exception as e:
-        print(f"热门推荐错误: {e}")
+        log.info(f"热门推荐错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -5326,7 +5329,7 @@ def api_similar_recommendations(dest_id):
         })
 
     except Exception as e:
-        print(f"相似推荐错误: {e}")
+        log.info(f"相似推荐错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -5370,7 +5373,7 @@ def api_mobile_config():
         })
 
     except Exception as e:
-        print(f"移动端配置错误: {e}")
+        log.info(f"移动端配置错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -5422,7 +5425,7 @@ def api_performance_stats():
         })
 
     except Exception as e:
-        print(f"性能统计错误: {e}")
+        log.info(f"性能统计错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -5449,7 +5452,7 @@ def api_user_behavior():
             'user_agent': request.headers.get('User-Agent', '')
         }
 
-        print(f"📊 用户行为: {behavior_log}")
+        log.info(f"📊 用户行为: {behavior_log}")
 
         return jsonify({
             'success': True,
@@ -5457,7 +5460,7 @@ def api_user_behavior():
         })
 
     except Exception as e:
-        print(f"用户行为追踪错误: {e}")
+        log.info(f"用户行为追踪错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -5487,7 +5490,7 @@ def api_system_health():
         })
 
     except Exception as e:
-        print(f"系统健康检查错误: {e}")
+        log.info(f"系统健康检查错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -5590,7 +5593,7 @@ def api_check_password_strength():
         })
 
     except Exception as e:
-        print(f"密码强度检查错误: {e}")
+        log.info(f"密码强度检查错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -5609,7 +5612,7 @@ def api_validate_csrf():
         })
 
     except Exception as e:
-        print(f"CSRF验证错误: {e}")
+        log.info(f"CSRF验证错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -5630,7 +5633,7 @@ def api_get_login_attempts():
         })
 
     except Exception as e:
-        print(f"获取登录尝试信息错误: {e}")
+        log.info(f"获取登录尝试信息错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -5693,7 +5696,7 @@ def api_login_secure():
             }), 401
 
     except Exception as e:
-        print(f"安全登录错误: {e}")
+        log.info(f"安全登录错误: {e}")
         record_login_attempt(ip_address, False)
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -5720,7 +5723,7 @@ def api_sanitize_input():
         })
 
     except Exception as e:
-        print(f"输入清理错误: {e}")
+        log.info(f"输入清理错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -5750,7 +5753,7 @@ def api_rate_limit_check():
         })
 
     except Exception as e:
-        print(f"速率限制检查错误: {e}")
+        log.info(f"速率限制检查错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -5803,7 +5806,7 @@ def api_map_destinations():
         })
 
     except Exception as e:
-        print(f"地图数据获取错误: {e}")
+        log.info(f"地图数据获取错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -5855,7 +5858,7 @@ def api_map_route():
                             }
                         })
             except Exception as e:
-                print(f"高德路线规划错误: {e}")
+                log.info(f"高德路线规划错误: {e}")
 
         # 模拟路线规划数据
         distance = random.randint(1000, 50000)  # 1-50公里
@@ -5888,7 +5891,7 @@ def api_map_route():
         })
 
     except Exception as e:
-        print(f"路线规划错误: {e}")
+        log.info(f"路线规划错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -5952,7 +5955,7 @@ def api_map_nearby():
         })
 
     except Exception as e:
-        print(f"周边搜索错误: {e}")
+        log.info(f"周边搜索错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -5976,7 +5979,7 @@ def api_map_geocode():
                         'location': result
                     })
             except Exception as e:
-                print(f"高德地理编码错误: {e}")
+                log.info(f"高德地理编码错误: {e}")
 
         # 模拟地理编码（北京为中心的随机坐标）
         base_lat = 39.9042
@@ -5994,7 +5997,7 @@ def api_map_geocode():
         })
 
     except Exception as e:
-        print(f"地理编码错误: {e}")
+        log.info(f"地理编码错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -6019,7 +6022,7 @@ def api_map_reverse_geocode():
                         'address': result
                     })
             except Exception as e:
-                print(f"高德逆地理编码错误: {e}")
+                log.info(f"高德逆地理编码错误: {e}")
 
         # 模拟逆地理编码
         addresses = [
@@ -6036,7 +6039,7 @@ def api_map_reverse_geocode():
         })
 
     except Exception as e:
-        print(f"逆地理编码错误: {e}")
+        log.info(f"逆地理编码错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -6078,7 +6081,7 @@ def api_get_trips():
         })
 
     except Exception as e:
-        print(f"获取行程列表错误: {e}")
+        log.info(f"获取行程列表错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -6132,7 +6135,7 @@ def api_create_trip():
 
     except Exception as e:
         db.session.rollback()
-        print(f"创建行程错误: {e}")
+        log.info(f"创建行程错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -6157,7 +6160,7 @@ def api_get_trip(trip_id):
         })
 
     except Exception as e:
-        print(f"获取行程详情错误: {e}")
+        log.info(f"获取行程详情错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -6212,7 +6215,7 @@ def api_update_trip(trip_id):
 
     except Exception as e:
         db.session.rollback()
-        print(f"更新行程错误: {e}")
+        log.info(f"更新行程错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -6237,7 +6240,7 @@ def api_delete_trip(trip_id):
 
     except Exception as e:
         db.session.rollback()
-        print(f"删除行程错误: {e}")
+        log.info(f"删除行程错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -6309,7 +6312,7 @@ def api_add_trip_item(trip_id):
 
     except Exception as e:
         db.session.rollback()
-        print(f"添加行程项目错误: {e}")
+        log.info(f"添加行程项目错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -6374,7 +6377,7 @@ def api_update_trip_item(trip_id, item_id):
 
     except Exception as e:
         db.session.rollback()
-        print(f"更新行程项目错误: {e}")
+        log.info(f"更新行程项目错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -6403,7 +6406,7 @@ def api_delete_trip_item(trip_id, item_id):
 
     except Exception as e:
         db.session.rollback()
-        print(f"删除行程项目错误: {e}")
+        log.info(f"删除行程项目错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -6426,7 +6429,7 @@ def api_get_shared_trip(share_code):
         })
 
     except Exception as e:
-        print(f"获取分享行程错误: {e}")
+        log.info(f"获取分享行程错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -6468,7 +6471,7 @@ def api_share_trip(trip_id):
 
     except Exception as e:
         db.session.rollback()
-        print(f"分享行程错误: {e}")
+        log.info(f"分享行程错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -6545,7 +6548,7 @@ def api_recommend_trip():
         })
 
     except Exception as e:
-        print(f"行程推荐错误: {e}")
+        log.info(f"行程推荐错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -6585,7 +6588,7 @@ def api_export_trip_pdf(trip_id):
         })
 
     except Exception as e:
-        print(f"PDF导出错误: {e}")
+        log.info(f"PDF导出错误: {e}")
         return jsonify({'success': False, 'error': f'导出失败: {str(e)}'}), 500
 
 
@@ -6623,7 +6626,7 @@ def api_export_trip_image(trip_id):
         })
 
     except Exception as e:
-        print(f"图片导出错误: {e}")
+        log.info(f"图片导出错误: {e}")
         return jsonify({'success': False, 'error': f'导出失败: {str(e)}'}), 500
 
 
@@ -6966,7 +6969,7 @@ def api_nearby_search():
         if cache_key in _nearby_cache:
             cache_time, cached_data = _nearby_cache[cache_key]
             if datetime.now().timestamp() - cache_time < NEARBY_CACHE_TTL:
-                print(f"✅ 使用缓存数据: {cache_key}")
+                log.info(f"✅ 使用缓存数据: {cache_key}")
                 # 限制返回数量
                 cached_data['nearby'] = cached_data['nearby'][:limit]
                 cached_data['count'] = len(cached_data['nearby'])
@@ -7074,11 +7077,11 @@ def api_nearby_search():
 
                         # 保存到缓存
                         _nearby_cache[cache_key] = (datetime.now().timestamp(), result_data)
-                        print(f"✅ 缓存数据已保存: {cache_key}")
+                        log.info(f"✅ 缓存数据已保存: {cache_key}")
 
                         return jsonify(result_data)
             except Exception as e:
-                print(f"高德POI搜索错误: {e}")
+                log.info(f"高德POI搜索错误: {e}")
 
         # 降级到本地数据库搜索
         nearby_results = []
@@ -7137,7 +7140,7 @@ def api_nearby_search():
         })
 
     except Exception as e:
-        print(f"周边搜索错误: {e}")
+        log.info(f"周边搜索错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -7161,7 +7164,7 @@ def api_nearby_categories():
         })
 
     except Exception as e:
-        print(f"获取分类列表错误: {e}")
+        log.info(f"获取分类列表错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -7240,7 +7243,7 @@ def api_nearby_destination(dest_id):
                             'source': 'gaode_api'
                         })
             except Exception as e:
-                print(f"高德周边搜索错误: {e}")
+                log.info(f"高德周边搜索错误: {e}")
 
         # 降级到本地数据库
         nearby_pois = NearbyPOI.query.filter(
@@ -7287,7 +7290,7 @@ def api_nearby_destination(dest_id):
         })
 
     except Exception as e:
-        print(f"景点周边搜索错误: {e}")
+        log.info(f"景点周边搜索错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -8185,13 +8188,13 @@ def add_sample_data():
         )
         db.session.add(dest)
     db.session.commit()
-    print(f"✅ 已导入 {len(sample_data)} 条示例数据")
+    log.info(f"✅ 已导入 {len(sample_data)} 条示例数据")
 
 def init_user_data():
     """初始化用户数据"""
     try:
         if User.query.count() == 0:
-            print("👤 创建测试用户...")
+            log.info("👤 创建测试用户...")
             test_users = [
                 {'username': 'test', 'email': 'test@example.com', 'password': '123456'},
                 {'username': 'admin', 'email': 'admin@example.com', 'password': 'admin123'},
@@ -8201,25 +8204,25 @@ def init_user_data():
                 user.set_password(user_data['password'])
                 db.session.add(user)
             db.session.commit()
-            print(f"✅ 已创建 {len(test_users)} 个测试用户")
+            log.info(f"✅ 已创建 {len(test_users)} 个测试用户")
     except Exception as e:
-        print(f"⚠️ 初始化用户数据时出错: {e}")
+        log.warning(f"⚠️ 初始化用户数据时出错: {e}")
         db.session.rollback()
 
 def init_admin():
     """初始化管理员账号"""
     if Admin.query.count() == 0:
-        print("👤 创建默认管理员...")
+        log.info("👤 创建默认管理员...")
         admin = Admin(username='admin')
         admin.set_password('admin123')
         db.session.add(admin)
         db.session.commit()
-        print("✅ 默认管理员创建成功 (用户名: admin, 密码: admin123)")
+        log.info("✅ 默认管理员创建成功 (用户名: admin, 密码: admin123)")
     else:
         admins = Admin.query.all()
-        print(f"👤 现有 {len(admins)} 个管理员账号")
+        log.info(f"👤 现有 {len(admins)} 个管理员账号")
         for a in admins:
-            print(f"   - 用户名: {a.username}")
+            log.info(f"   - 用户名: {a.username}")
 
 def remove_duplicate_destinations():
     """移除重复的景点数据"""
@@ -8238,11 +8241,11 @@ def remove_duplicate_destinations():
             for dup in duplicates:
                 db.session.delete(dup)
             db.session.commit()
-            print(f"✅ 已删除 {len(duplicates)} 条重复数据")
+            log.info(f"✅ 已删除 {len(duplicates)} 条重复数据")
         else:
-            print("✅ 没有发现重复数据")
+            log.info("✅ 没有发现重复数据")
     except Exception as e:
-        print(f"⚠️ 去重过程出错: {e}")
+        log.warning(f"⚠️ 去重过程出错: {e}")
         db.session.rollback()
 
 def add_random_review_counts():
@@ -8256,7 +8259,7 @@ def add_random_review_counts():
 
     if updated > 0:
         db.session.commit()
-        print(f"✅ 为 {updated} 个景点添加了随机评论数")
+        log.info(f"✅ 为 {updated} 个景点添加了随机评论数")
 
 def check_and_update_destinations():
     """检查并更新景点数据（不重新导入）"""
@@ -8268,15 +8271,15 @@ def check_and_update_destinations():
     ).count()
 
     if destinations_without_images > 0:
-        print(f"🖼️ 发现 {destinations_without_images} 个景点缺少图片，正在更新...")
+        log.info(f"🖼️ 发现 {destinations_without_images} 个景点缺少图片，正在更新...")
         update_destinations_with_images()
     else:
-        print("✅ 所有景点已有图片，无需更新")
+        log.info("✅ 所有景点已有图片，无需更新")
 
     # 检查评论数
     destinations_without_reviews = Destination.query.filter(Destination.review_count == 0).count()
     if destinations_without_reviews > 0:
-        print(f"💬 发现 {destinations_without_reviews} 个景点没有评论数，正在添加...")
+        log.info(f"💬 发现 {destinations_without_reviews} 个景点没有评论数，正在添加...")
         add_random_review_counts()
 
     # 检查重复数据
@@ -8288,11 +8291,11 @@ def init_db():
 
     # 检查当前数据库中的数据量
     current_count = Destination.query.count()
-    print(f"📊 当前数据库中有 {current_count} 条数据")
+    log.info(f"📊 当前数据库中有 {current_count} 条数据")
 
     # 只在数据库为空时才导入数据
     if current_count == 0:
-        print("📦 数据库为空，正在从 destinations.json 导入数据...")
+        log.info("📦 数据库为空，正在从 destinations.json 导入数据...")
 
         if JSON_DESTINATIONS:
             imported_count = 0
@@ -8330,14 +8333,14 @@ def init_db():
                     # 每100条提交一次
                     if imported_count % 100 == 0:
                         db.session.commit()
-                        print(f"⏳ 已导入 {imported_count} 条数据...")
+                        log.info(f"⏳ 已导入 {imported_count} 条数据...")
 
                 except Exception as e:
-                    print(f"⚠️ 导入数据出错 {data.get('name', '未知')}: {e}")
+                    log.warning(f"⚠️ 导入数据出错 {data.get('name', '未知')}: {e}")
                     continue
 
             db.session.commit()
-            print(f"✅ 成功导入 {imported_count} 条数据")
+            log.info(f"✅ 成功导入 {imported_count} 条数据")
 
             # 匹配图片
             update_destinations_with_images()
@@ -8345,12 +8348,12 @@ def init_db():
             # 执行去重
             remove_duplicate_destinations()
         else:
-            print("⚠️ JSON 数据为空，使用示例数据")
+            log.warning("⚠️ JSON 数据为空，使用示例数据")
             add_sample_data()
             update_destinations_with_images()
             remove_duplicate_destinations()
     else:
-        print(f"✅ 数据库已有 {current_count} 条数据，跳过导入")
+        log.info(f"✅ 数据库已有 {current_count} 条数据，跳过导入")
         # 检查是否需要更新
         check_and_update_destinations()
 
@@ -8366,19 +8369,19 @@ def init_db():
 
 def _init_extended_data():
     """初始化扩展数据 - 省份/城市/美食/行程/配置/导航/轮播"""
-    print("\n📦 检查扩展数据...")
+    log.info("\n📦 检查扩展数据...")
 
     # 1. 省份
     if Province.query.count() == 0:
-        print("   📍 导入省份数据...")
+        log.info("   📍 导入省份数据...")
         for i, name in enumerate(ALL_PROVINCES):
             db.session.add(Province(name=name, sort_order=i, is_active=True))
         db.session.commit()
-        print(f"   ✅ 导入 {Province.query.count()} 个省份")
+        log.info(f"   ✅ 导入 {Province.query.count()} 个省份")
 
     # 2. 城市
     if City.query.count() == 0:
-        print("   🏙️ 导入城市数据...")
+        log.info("   🏙️ 导入城市数据...")
         province_map = {p.name: p.id for p in Province.query.all()}
         count = 0
         for city_name in ALL_CITIES:
@@ -8400,11 +8403,11 @@ def _init_extended_data():
             if count % 50 == 0:
                 db.session.commit()
         db.session.commit()
-        print(f"   ✅ 导入 {count} 个城市")
+        log.info(f"   ✅ 导入 {count} 个城市")
 
     # 3. 美食
     if Food.query.count() == 0:
-        print("   🍜 导入美食数据...")
+        log.info("   🍜 导入美食数据...")
         count = 0
         for location, foods in FOOD_DATABASE.items():
             for food_data in foods:
@@ -8423,11 +8426,11 @@ def _init_extended_data():
                 if count % 50 == 0:
                     db.session.commit()
         db.session.commit()
-        print(f"   ✅ 导入 {count} 条美食")
+        log.info(f"   ✅ 导入 {count} 条美食")
 
     # 4. 行程模板
     if TripPlan.query.count() == 0:
-        print("   🗺️ 导入行程模板...")
+        log.info("   🗺️ 导入行程模板...")
         count = 0
         for city, plans in TRIP_PLANS.items():
             for day_key, items in plans.items():
@@ -8458,11 +8461,11 @@ def _init_extended_data():
             ))
             count += 1
         db.session.commit()
-        print(f"   ✅ 导入 {count} 条行程模板")
+        log.info(f"   ✅ 导入 {count} 条行程模板")
 
     # 5. 站点配置
     if SiteConfig.query.count() == 0:
-        print("   ⚙️ 初始化站点配置...")
+        log.info("   ⚙️ 初始化站点配置...")
         configs = [
             {'key': 'site_name', 'value': '智能旅游助手', 'label': '站点名称', 'group': 'general', 'is_public': True},
             {'key': 'site_description', 'value': '您的智能旅行伙伴', 'label': '站点描述', 'group': 'general', 'is_public': True},
@@ -8482,11 +8485,11 @@ def _init_extended_data():
                 is_public=cfg.get('is_public', False)
             ))
         db.session.commit()
-        print(f"   ✅ 初始化 {SiteConfig.query.count()} 条配置")
+        log.info(f"   ✅ 初始化 {SiteConfig.query.count()} 条配置")
 
     # 6. 导航菜单
     if Navigation.query.count() == 0:
-        print("   📋 初始化导航菜单...")
+        log.info("   📋 初始化导航菜单...")
         navs = [
             {'name': '首页', 'url': '/', 'icon': '🏠', 'sort_order': 1, 'position': 'header'},
             {'name': '热门景点', 'url': '/?view=hot', 'icon': '🔥', 'sort_order': 2, 'position': 'header'},
@@ -8500,25 +8503,25 @@ def _init_extended_data():
                 is_active=True
             ))
         db.session.commit()
-        print(f"   ✅ 初始化 {Navigation.query.count()} 条导航")
+        log.info(f"   ✅ 初始化 {Navigation.query.count()} 条导航")
 
     # 7. 轮播图
     if Banner.query.count() == 0:
-        print("   🖼️ 初始化轮播图...")
+        log.info("   🖼️ 初始化轮播图...")
         for i, title in enumerate(['探索中国美景', '智能行程规划', '发现特色美食'], 1):
             db.session.add(Banner(title=title, image_url=f'/static/images/banner{i}.jpg',
                                   sort_order=i, is_active=True))
         db.session.commit()
-        print(f"   ✅ 初始化 {Banner.query.count()} 条轮播图")
+        log.info(f"   ✅ 初始化 {Banner.query.count()} 条轮播图")
 
     # 汇总
-    print(f"\n   📊 数据汇总: 省份{Province.query.count()} | 城市{City.query.count()} | "
+    log.info(f"\n   📊 数据汇总: 省份{Province.query.count()} | 城市{City.query.count()} | "
           f"美食{Food.query.count()} | 行程{TripPlan.query.count()} | "
           f"景点{Destination.query.count()} | 用户{User.query.count()}")
 
 def cleanup(signum, frame):
     """退出时清理"""
-    print("\n正在关闭应用...")
+    log.info("\n正在关闭应用...")
     sys.exit(0)
 
 # 注册信号处理
@@ -8686,11 +8689,11 @@ Review = _ext['Review']
 SiteConfig = _ext['SiteConfig']
 Banner = _ext['Banner']
 Navigation = _ext['Navigation']
-print("✅ 扩展模型已注册")
+log.info("✅ 扩展模型已注册")
 
 from api_routes_extended import api_extended
 app.register_blueprint(api_extended)
-print("✅ API v2 路由已加载")
+log.info("✅ API v2 路由已加载")
 
 
 # ==================== 基于数据库的前端内容 API ====================
@@ -8782,9 +8785,9 @@ if __name__ == '__main__':
     import logging
     logging.basicConfig(level=logging.WARNING)
 
-    print("\n" + "=" * 50)
-    print("🚀 智能旅游助手启动中...")
-    print("=" * 50 + "\n")
+    log.info("\n" + "=" * 50)
+    log.info("🚀 智能旅游助手启动中...")
+    log.info("=" * 50 + "\n")
 
     with app.app_context():
         init_db()
@@ -8805,15 +8808,15 @@ if __name__ == '__main__':
     
     local_ip = get_local_ip()
 
-    print("🌐 服务器信息：")
-    print(f"   本地访问: http://127.0.0.1:5000")
-    print(f"   网络访问: http://{local_ip}:5000")
-    print(f"   所有接口: http://0.0.0.0:5000")
-    print("")
-    print("📱 移动设备访问：")
-    print(f"   请使用: http://{local_ip}:5000")
-    print("   确保设备连接到同一网络或正确配置端口转发")
-    print("=" * 50 + "\n")
+    log.info("🌐 服务器信息：")
+    log.info(f"   本地访问: http://127.0.0.1:5000")
+    log.info(f"   网络访问: http://{local_ip}:5000")
+    log.info(f"   所有接口: http://0.0.0.0:5000")
+    log.info("")
+    log.info("📱 移动设备访问：")
+    log.info(f"   请使用: http://{local_ip}:5000")
+    log.info("   确保设备连接到同一网络或正确配置端口转发")
+    log.info("=" * 50 + "\n")
 
     # 配置为允许所有网络访问
     socketio.run(app, 
