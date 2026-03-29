@@ -3313,10 +3313,19 @@ def api_register():
 
 @app.route('/api/login', methods=['POST'])
 def api_login():
-    data = request.get_json()
-    account = data.get('username', '').strip()
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({'success': False, 'error': '请求体必须为JSON格式'}), 400
+
+    from services.validators import sanitize_string
+    account = sanitize_string(data.get('username', ''), 80)
     password = data.get('password', '')
     remember = data.get('remember', False)
+
+    if not account:
+        return jsonify({'success': False, 'error': '请输入用户名或邮箱'}), 400
+    if not password:
+        return jsonify({'success': False, 'error': '请输入密码'}), 400
 
     log.info(f"登录尝试 - 账号: {account}")
 
@@ -3518,10 +3527,14 @@ def weibo_callback():
 # ==================== 手机号登录/注册 ====================
 @app.route('/api/send_code', methods=['POST'])
 def send_verification_code():
-    data = request.get_json()
-    phone = data.get('phone')
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({'success': False, 'error': '请求体必须为JSON格式'}), 400
 
-    if not phone or not re.match(r'^1[3-9]\d{9}$', phone):
+    from services.validators import validate_phone
+    phone = data.get('phone', '').strip()
+
+    if not phone or not validate_phone(phone):
         return jsonify({'success': False, 'error': '请输入正确的手机号'}), 400
 
     code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
@@ -3535,12 +3548,18 @@ def send_verification_code():
 
 @app.route('/api/login/code', methods=['POST'])
 def login_with_code():
-    data = request.get_json()
-    phone = data.get('phone')
-    code = data.get('code')
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({'success': False, 'error': '请求体必须为JSON格式'}), 400
 
-    if not phone or not code:
-        return jsonify({'success': False, 'error': '请填写手机号和验证码'}), 400
+    from services.validators import validate_phone, sanitize_string
+    phone = data.get('phone', '').strip()
+    code = sanitize_string(data.get('code', ''), 6)
+
+    if not phone or not validate_phone(phone):
+        return jsonify({'success': False, 'error': '请输入正确的手机号'}), 400
+    if not code or len(code) != 6:
+        return jsonify({'success': False, 'error': '请输入6位验证码'}), 400
 
     code_data = session.get(f'code_{phone}')
     if not code_data:
@@ -3609,10 +3628,14 @@ def login_with_code():
 @app.route('/api/favorite/add', methods=['POST'])
 @login_required
 def add_favorite():
-    data = request.get_json()
-    dest_id = data.get('dest_id')
-    if not dest_id:
-        return jsonify({'success': False, 'error': '缺少景点ID'}), 400
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({'success': False, 'error': '请求体必须为JSON格式'}), 400
+
+    from services.validators import validate_positive_int
+    dest_id, err = validate_positive_int(data.get('dest_id'), '景点ID')
+    if err:
+        return jsonify({'success': False, 'error': err}), 400
 
     dest = db.session.get(Destination, dest_id)
     if not dest:
@@ -3634,10 +3657,14 @@ def add_favorite():
 @app.route('/api/favorite/remove', methods=['POST'])
 @login_required
 def remove_favorite():
-    data = request.get_json()
-    dest_id = data.get('dest_id')
-    if not dest_id:
-        return jsonify({'success': False, 'error': '缺少景点ID'}), 400
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({'success': False, 'error': '请求体必须为JSON格式'}), 400
+
+    from services.validators import validate_positive_int
+    dest_id, err = validate_positive_int(data.get('dest_id'), '景点ID')
+    if err:
+        return jsonify({'success': False, 'error': err}), 400
 
     user = db.session.get(User, session['user_id'])
     favorites = set(json.loads(user.favorites or '[]'))
@@ -3673,12 +3700,25 @@ def check_favorite(dest_id):
 @app.route('/api/favorite/batch', methods=['POST'])
 @login_required
 def batch_favorite():
-    data = request.get_json()
-    dest_ids = data.get('dest_ids', [])
-    action = data.get('action', 'add')
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({'success': False, 'error': '请求体必须为JSON格式'}), 400
 
-    if not dest_ids:
+    from services.validators import validate_choice
+    dest_ids = data.get('dest_ids', [])
+    if not dest_ids or not isinstance(dest_ids, list):
         return jsonify({'success': False, 'error': '请选择景点'}), 400
+    # 验证每个ID是正整数
+    valid_ids = []
+    for did in dest_ids:
+        try:
+            valid_ids.append(int(did))
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': f'无效的景点ID: {did}'}), 400
+
+    action, err = validate_choice(data.get('action', 'add'), '操作类型', ['add', 'remove'], default='add')
+    if err:
+        return jsonify({'success': False, 'error': err}), 400
 
     user = db.session.get(User, session['user_id'])
     favorites = set(json.loads(user.favorites or '[]'))
@@ -3757,14 +3797,18 @@ def clear_click_history():
 @app.route('/api/user/profile/update', methods=['POST'])
 @login_required
 def update_profile():
-    data = request.get_json()
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({'success': False, 'error': '请求体必须为JSON格式'}), 400
+
+    from services.validators import validate_username, validate_email
     user = db.session.get(User, session['user_id'])
     
     # 更新用户名
     new_username = data.get('username', '').strip()
     if new_username and new_username != user.username:
-        if len(new_username) < 3:
-            return jsonify({'success': False, 'error': '用户名至少3个字符'}), 400
+        if not validate_username(new_username):
+            return jsonify({'success': False, 'error': '用户名需3-20个字符，仅支持字母数字下划线'}), 400
         if User.query.filter(User.username == new_username, User.id != user.id).first():
             return jsonify({'success': False, 'error': '用户名已被使用'}), 400
         user.username = new_username
@@ -3773,6 +3817,8 @@ def update_profile():
     # 更新邮箱
     new_email = data.get('email', '').strip()
     if new_email and new_email != user.email:
+        if not validate_email(new_email):
+            return jsonify({'success': False, 'error': '邮箱格式不正确'}), 400
         if User.query.filter(User.email == new_email, User.id != user.id).first():
             return jsonify({'success': False, 'error': '邮箱已被其他用户使用'}), 400
         user.email = new_email
@@ -6120,23 +6166,34 @@ def api_create_trip():
     """创建新行程"""
     try:
         user_id = session.get('user_id')
-        data = request.get_json()
+        data = request.get_json(silent=True)
+        if not data:
+            return jsonify({'success': False, 'error': '请求体必须为JSON格式'}), 400
+
+        from services.validators import validate_string, validate_date, validate_float
 
         # 验证必填字段
-        required_fields = ['title', 'start_date', 'end_date']
-        for field in required_fields:
-            if not data.get(field):
-                return jsonify({'success': False, 'error': f'缺少必填字段：{field}'}), 400
+        title, err = validate_string(data.get('title'), '标题', min_len=1, max_len=200, required=True)
+        if err:
+            return jsonify({'success': False, 'error': err}), 400
 
-        # 验证日期格式
-        try:
-            start_date = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
-            end_date = datetime.strptime(data['end_date'], '%Y-%m-%d').date()
-        except ValueError:
-            return jsonify({'success': False, 'error': '日期格式错误'}), 400
+        start_date, err = validate_date(data.get('start_date'), '开始日期')
+        if err:
+            return jsonify({'success': False, 'error': err}), 400
+
+        end_date, err = validate_date(data.get('end_date'), '结束日期')
+        if err:
+            return jsonify({'success': False, 'error': err}), 400
 
         if end_date < start_date:
             return jsonify({'success': False, 'error': '结束日期不能早于开始日期'}), 400
+
+        budget, err = validate_float(data.get('budget', 0), '预算', default=0, min_val=0)
+        if err:
+            return jsonify({'success': False, 'error': err}), 400
+
+        description, _ = validate_string(data.get('description', ''), '描述', max_len=1000)
+        is_public = bool(data.get('is_public', False))
 
         # 生成分享码
         share_code = hashlib.md5(f"{user_id}{datetime.now().timestamp()}".encode()).hexdigest()[:8]
@@ -6144,12 +6201,12 @@ def api_create_trip():
         # 创建行程
         trip = Trip(
             user_id=user_id,
-            title=data['title'].strip(),
-            description=data.get('description', '').strip(),
+            title=title,
+            description=description,
             start_date=start_date,
             end_date=end_date,
-            budget=float(data.get('budget', 0)),
-            is_public=data.get('is_public', False),
+            budget=budget,
+            is_public=is_public,
             share_code=share_code
         )
 
@@ -6204,31 +6261,49 @@ def api_update_trip(trip_id):
         if not trip:
             return jsonify({'success': False, 'error': '行程不存在'}), 404
 
-        data = request.get_json()
+        data = request.get_json(silent=True)
+        if not data:
+            return jsonify({'success': False, 'error': '请求体必须为JSON格式'}), 400
 
-        # 更新字段
+        from services.validators import validate_string, validate_date, validate_float, validate_choice
+
+        # 更新字段（带验证）
         if 'title' in data:
-            trip.title = data['title'].strip()
+            title, err = validate_string(data['title'], '标题', min_len=1, max_len=200, required=True)
+            if err:
+                return jsonify({'success': False, 'error': err}), 400
+            trip.title = title
+
         if 'description' in data:
-            trip.description = data['description'].strip()
+            trip.description, _ = validate_string(data['description'], '描述', max_len=1000)
+
         if 'start_date' in data:
-            try:
-                trip.start_date = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
-            except ValueError:
-                return jsonify({'success': False, 'error': '开始日期格式错误'}), 400
+            start_date, err = validate_date(data['start_date'], '开始日期')
+            if err:
+                return jsonify({'success': False, 'error': err}), 400
+            trip.start_date = start_date
+
         if 'end_date' in data:
-            try:
-                trip.end_date = datetime.strptime(data['end_date'], '%Y-%m-%d').date()
-            except ValueError:
-                return jsonify({'success': False, 'error': '结束日期格式错误'}), 400
+            end_date, err = validate_date(data['end_date'], '结束日期')
+            if err:
+                return jsonify({'success': False, 'error': err}), 400
+            trip.end_date = end_date
+
         if 'budget' in data:
-            trip.budget = float(data['budget'])
+            budget, err = validate_float(data['budget'], '预算', default=trip.budget, min_val=0)
+            if err:
+                return jsonify({'success': False, 'error': err}), 400
+            trip.budget = budget
+
         if 'status' in data:
-            if data['status'] not in ['planning', 'ongoing', 'completed', 'cancelled']:
-                return jsonify({'success': False, 'error': '无效的状态值'}), 400
-            trip.status = data['status']
+            status, err = validate_choice(data['status'], '状态',
+                ['planning', 'ongoing', 'completed', 'cancelled'], default=trip.status)
+            if err:
+                return jsonify({'success': False, 'error': err}), 400
+            trip.status = status
+
         if 'is_public' in data:
-            trip.is_public = data['is_public']
+            trip.is_public = bool(data['is_public'])
 
         # 验证日期
         if trip.end_date < trip.start_date:
@@ -6284,34 +6359,49 @@ def api_add_trip_item(trip_id):
         if not trip:
             return jsonify({'success': False, 'error': '行程不存在'}), 404
 
-        data = request.get_json()
+        data = request.get_json(silent=True)
+        if not data:
+            return jsonify({'success': False, 'error': '请求体必须为JSON格式'}), 400
+
+        from services.validators import validate_string, validate_positive_int, validate_float, validate_time
 
         # 验证必填字段
-        if not data.get('activity'):
-            return jsonify({'success': False, 'error': '请填写活动内容'}), 400
+        activity, err = validate_string(data.get('activity'), '活动内容', min_len=1, max_len=200, required=True)
+        if err:
+            return jsonify({'success': False, 'error': err}), 400
 
-        if not data.get('day_number'):
-            return jsonify({'success': False, 'error': '请指定第几天'}), 400
+        day_number, err = validate_positive_int(data.get('day_number'), '天数', min_val=1)
+        if err:
+            return jsonify({'success': False, 'error': err}), 400
 
-        # 验证天数
-        day_number = int(data['day_number'])
+        # 验证天数范围
         trip_duration = (trip.end_date - trip.start_date).days + 1
-        if day_number < 1 or day_number > trip_duration:
+        if day_number > trip_duration:
             return jsonify({'success': False, 'error': f'天数必须在1-{trip_duration}之间'}), 400
 
-        # 解析时间
-        start_time = None
-        end_time = None
-        if data.get('start_time'):
-            try:
-                start_time = datetime.strptime(data['start_time'], '%H:%M').time()
-            except ValueError:
-                return jsonify({'success': False, 'error': '开始时间格式错误'}), 400
-        if data.get('end_time'):
-            try:
-                end_time = datetime.strptime(data['end_time'], '%H:%M').time()
-            except ValueError:
-                return jsonify({'success': False, 'error': '结束时间格式错误'}), 400
+        # 解析时间（可选）
+        start_time, err = validate_time(data.get('start_time'), '开始时间')
+        if err:
+            return jsonify({'success': False, 'error': err}), 400
+
+        end_time, err = validate_time(data.get('end_time'), '结束时间')
+        if err:
+            return jsonify({'success': False, 'error': err}), 400
+
+        # 验证费用
+        cost, err = validate_float(data.get('cost', 0), '费用', default=0, min_val=0)
+        if err:
+            return jsonify({'success': False, 'error': err}), 400
+
+        location, _ = validate_string(data.get('location', ''), '地点', max_len=300)
+        notes, _ = validate_string(data.get('notes', ''), '备注', max_len=1000)
+
+        # 验证destination_id（可选）
+        dest_id = data.get('destination_id')
+        if dest_id is not None:
+            dest_id, err = validate_positive_int(dest_id, '景点ID')
+            if err:
+                return jsonify({'success': False, 'error': err}), 400
 
         # 获取排序索引
         max_order = db.session.query(func.max(TripItem.order_index)).filter_by(trip_id=trip_id).scalar() or 0
@@ -6319,14 +6409,14 @@ def api_add_trip_item(trip_id):
         # 创建行程项目
         item = TripItem(
             trip_id=trip_id,
-            destination_id=data.get('destination_id'),
+            destination_id=dest_id,
             day_number=day_number,
             start_time=start_time,
             end_time=end_time,
-            activity=data['activity'].strip(),
-            location=data.get('location', '').strip(),
-            notes=data.get('notes', '').strip(),
-            cost=float(data.get('cost', 0)),
+            activity=activity,
+            location=location,
+            notes=notes,
+            cost=cost,
             order_index=max_order + 1
         )
 
@@ -7382,9 +7472,13 @@ def assistant_api():
     # 使用延迟初始化
     assistant = get_travel_assistant()
 
-    data = request.get_json()
-    message = data.get('message', '')
-    session_id = data.get('session_id', request.remote_addr)
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({'success': False, 'error': '请求体必须为JSON格式'}), 400
+
+    from services.validators import sanitize_string
+    message = sanitize_string(data.get('message', ''), 2000)
+    session_id = sanitize_string(data.get('session_id', request.remote_addr), 100)
     user_id = session.get('user_id')
 
     if not message:
