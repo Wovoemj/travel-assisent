@@ -174,21 +174,56 @@ def _build_image_cache():
 
 def match_scenic_image(dest_name, external=False):
     """
-    根据景点名称从scenic_images文件夹中匹配图片（使用缓存）
+    根据景点名称从scenic_images文件夹中匹配图片（使用缓存，支持复合名称）
+    改进：处理 "青城山-都江堰"、"峨眉山-乐山大佛" 等复合名称
     """
     cache = _build_image_cache()
-    clean_name = dest_name.strip().replace(' ', '').replace('·', '').replace('-', '')
+    clean_name = dest_name.strip().replace(' ', '')
 
     # 1. 精确匹配
     if clean_name in cache:
         return cache[clean_name]
 
-    # 2. 子串匹配：目标名包含缓存key 或 缓存key包含目标名
-    for key, url in cache.items():
-        if clean_name in key or key in clean_name:
-            return url
+    # 2. 去除标点后匹配
+    clean_no_punct = clean_name.replace('·', '').replace('-', '')
+    if clean_no_punct in cache:
+        return cache[clean_no_punct]
 
-    # 3. 无匹配，返回默认
+    # 3. 去掉括号内容后匹配
+    clean_no_bracket = re.sub(r'[（(][^）)]*[）)]', '', clean_name).strip()
+    if clean_no_bracket != clean_name and clean_no_bracket in cache:
+        return cache[clean_no_bracket]
+
+    # 4. 复合名称拆分（处理 "-" 和 "·" 分隔的复合名称）
+    parts = re.split(r'[-·]', clean_name)
+    if len(parts) > 1:
+        for part in parts:
+            part = part.strip()
+            if len(part) >= 2 and part in cache:
+                return cache[part]
+        combined = ''.join(parts)
+        if combined in cache:
+            return cache[combined]
+
+    # 5. 子串匹配（确保质量：匹配度 >= 50%）
+    best_match_url = None
+    best_score = 0
+    for key, url in cache.items():
+        if clean_name in key:
+            score = len(clean_name) / len(key)
+            if score > best_score and score >= 0.5:
+                best_score = score
+                best_match_url = url
+        elif key in clean_name:
+            score = len(key) / len(clean_name)
+            if score > best_score and score >= 0.3:
+                best_score = score
+                best_match_url = url
+
+    if best_match_url:
+        return best_match_url
+
+    # 6. 无匹配，返回默认
     placeholder = '/static/images/placeholder.jpg'
     if external:
         try:
@@ -196,7 +231,6 @@ def match_scenic_image(dest_name, external=False):
         except Exception:
             return placeholder
     return placeholder
-
 def update_destinations_with_images():
     """更新数据库中的景点图片（使用缓存，批量更新）"""
     # 先构建图片缓存
