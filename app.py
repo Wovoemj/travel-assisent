@@ -3284,14 +3284,20 @@ def profile_page():
 @app.route('/api/register', methods=['POST'])
 def api_register():
     data = request.get_json()
-    username = data.get('username', '').strip()
-    email = data.get('email', '').strip()
+    if not data:
+        return jsonify({'success': False, 'error': '请求体必须为JSON格式'}), 400
+
+    from services.validators import validate_username, validate_email, validate_password, sanitize_string
+    username = sanitize_string(data.get('username', ''), 20)
+    email = sanitize_string(data.get('email', ''), 120)
     password = data.get('password', '')
 
-    if len(username) < 3:
-        return jsonify({'success': False, 'error': '用户名至少3个字符'}), 400
-    if len(password) < 6:
+    if not validate_username(username):
+        return jsonify({'success': False, 'error': '用户名需3-20个字符，仅支持字母数字下划线'}), 400
+    if not validate_password(password):
         return jsonify({'success': False, 'error': '密码至少6个字符'}), 400
+    if not validate_email(email):
+        return jsonify({'success': False, 'error': '邮箱格式不正确'}), 400
     if User.query.filter_by(username=username).first():
         return jsonify({'success': False, 'error': '用户名已存在'}), 400
     if email and User.query.filter_by(email=email).first():
@@ -4743,19 +4749,18 @@ def add_review(dest_id):
         return jsonify({'success': False, 'error': '景点不存在'}), 404
 
     data = request.get_json()
-    rating = data.get('rating')
-    content = data.get('content')
+    if not data:
+        return jsonify({'success': False, 'error': '请求体必须为JSON格式'}), 400
+
+    from services.validators import validate_rating, sanitize_string
+    rating = validate_rating(data.get('rating'))
+    content = sanitize_string(data.get('content', ''), 500)
     visit_date = data.get('visit_date')
 
-    if not rating or not content:
-        return jsonify({'success': False, 'error': '请填写评分和评论内容'}), 400
-
-    try:
-        rating = float(rating)
-        if rating < 1 or rating > 5:
-            return jsonify({'success': False, 'error': '评分必须在1-5之间'}), 400
-    except:
-        return jsonify({'success': False, 'error': '评分格式错误'}), 400
+    if rating is None:
+        return jsonify({'success': False, 'error': '评分必须在1-5之间'}), 400
+    if not content:
+        return jsonify({'success': False, 'error': '评论内容不能为空'}), 400
 
     user = db.session.get(User, session['user_id'])
 
