@@ -765,7 +765,6 @@ class UserCheckin(db.Model):
         }
 
 
-# ==================== 评论数据生成 ====================
 # 评论模板
 REVIEW_TEMPLATES = [
     "非常值得一去的景点，景色优美，环境整洁，服务态度也很好。",
@@ -797,56 +796,6 @@ USERNAMES = [
     "风景控", "历史迷", "文化人", "户外爱好者", "亲子游",
     "学生党", "上班族", "退休老人", "新婚夫妇", "闺蜜团"
 ]
-
-def generate_random_reviews(dest_id, dest_name, count=10):
-    """
-    为景点生成随机评论
-    """
-    reviews = []
-    now = datetime.now()
-
-    for i in range(min(count, 20)):  # 最多20条
-        # 随机生成评分 (3.5-5.0)
-        rating = round(random.uniform(3.5, 5.0), 1)
-
-        # 随机选择评论模板
-        content = random.choice(REVIEW_TEMPLATES)
-
-        # 随机选择用户名
-        username = random.choice(USERNAMES) + str(random.randint(1, 100))
-
-        # 随机生成日期（过去1年内）
-        days_ago = random.randint(1, 365)
-        review_date = (now - timedelta(days=days_ago)).strftime('%Y-%m-%d')
-
-        # 随机生成点赞数
-        likes = random.randint(0, 50)
-
-        # 随机生成是否有图片
-        has_images = random.choice([True, False])
-        images = []
-        if has_images:
-            images = [f"https://picsum.photos/200/150?random={random.randint(1,1000)}" for _ in range(random.randint(1, 3))]
-
-        reviews.append({
-            'id': i + 1,
-            'dest_id': dest_id,
-            'username': username,
-            'avatar_color': random.choice(['bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500']),
-            'rating': rating,
-            'content': content,
-            'created_at': review_date,
-            'likes': likes,
-            'images': images,
-            'user_level': random.choice(['青铜', '白银', '黄金', '铂金', '钻石']) if random.random() > 0.5 else None
-        })
-
-    # 按日期排序（最新的在前）
-    reviews.sort(key=lambda x: x['created_at'], reverse=True)
-    return reviews
-
-# 缓存评论
-_reviews_cache = {}
 
 
 # ==================== 辅助函数 ====================
@@ -4727,60 +4676,109 @@ def dest_detail(dest_id):
                            background_image=bg_image)
 
 
-# ==================== 评论API ====================
+# ==================== 评论API（数据库持久化） ====================
+
+def _seed_reviews_for_destination(dest_id, dest_name, count=15):
+    """为景点生成种子评论并写入数据库"""
+    avatar_colors = ['bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500']
+    user_levels = ['青铜', '白银', '黄金', '铂金', '钻石']
+    now = datetime.now()
+
+    reviews_to_add = []
+    for _ in range(count):
+        rating = round(random.uniform(3.5, 5.0), 1)
+        content = random.choice(REVIEW_TEMPLATES)
+        username = random.choice(USERNAMES) + str(random.randint(1, 100))
+        days_ago = random.randint(1, 365)
+        review_date = now - timedelta(days=days_ago)
+        likes = random.randint(0, 50)
+        has_images = random.random() > 0.7
+        images = []
+        if has_images:
+            images = [f"https://picsum.photos/200/150?random={random.randint(1,1000)}" for _ in range(random.randint(1, 3))]
+
+        review = Review(
+            destination_id=dest_id,
+            username=username,
+            rating=rating,
+            content=content,
+            images=json.dumps(images, ensure_ascii=False),
+            likes=likes,
+            status='approved',
+            created_at=review_date
+        )
+        reviews_to_add.append(review)
+
+    db.session.add_all(reviews_to_add)
+    db.session.commit()
+    return reviews_to_add
+
+
+def _ensure_reviews_exist(dest_id, dest_name):
+    """确保景点有评论，如果没有则自动生成"""
+    count = Review.query.filter_by(destination_id=dest_id, status='approved').count()
+    if count == 0:
+        _seed_reviews_for_destination(dest_id, dest_name, random.randint(10, 20))
+
+
+def _review_to_dict(review, dest_name=None):
+    """将Review模型转为字典"""
+    avatar_colors = ['bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500']
+    user_levels = ['青铜', '白银', '黄金', '铂金', '钻石']
+    return {
+        'id': review.id,
+        'dest_id': review.destination_id,
+        'dest_name': dest_name or (review.destination.name if review.destination else ''),
+        'username': review.username,
+        'avatar_color': random.choice(avatar_colors),
+        'rating': review.rating,
+        'content': review.content,
+        'created_at': review.created_at.strftime('%Y-%m-%d') if review.created_at else '',
+        'likes': review.likes or 0,
+        'images': json.loads(review.images) if review.images else [],
+        'user_level': random.choice(user_levels) if random.random() > 0.5 else None
+    }
+
+
 @app.route('/api/reviews/<int:dest_id>')
 def get_reviews(dest_id):
-    """获取景点评论"""
+    """获取景点评论（数据库版）"""
     dest = db.session.get(Destination, dest_id)
     if not dest:
         return jsonify({'success': False, 'error': '景点不存在'}), 404
 
+    # 确保评论存在
+    _ensure_reviews_exist(dest_id, dest.name)
+
     # 获取分页参数
     page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
+    per_page = min(request.args.get('per_page', 10, type=int), 50)
 
-    # 检查缓存
-    cache_key = f"reviews:{dest_id}"
-    if cache_key not in _reviews_cache:
-        # 生成10-20条随机评论
-        review_count = random.randint(10, 20)
-        _reviews_cache[cache_key] = generate_random_reviews(dest_id, dest.name, review_count)
+    # 查询数据库
+    pagination = Review.query.filter_by(destination_id=dest_id, status='approved') \
+        .order_by(Review.created_at.desc()) \
+        .paginate(page=page, per_page=per_page, error_out=False)
 
-    all_reviews = _reviews_cache[cache_key]
-
-    # 分页
-    total = len(all_reviews)
-    start = (page - 1) * per_page
-    end = start + per_page
-    paginated_reviews = all_reviews[start:end]
+    reviews = [_review_to_dict(r) for r in pagination.items]
 
     # 计算评分分布
+    all_reviews = Review.query.filter_by(destination_id=dest_id, status='approved').all()
     rating_distribution = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0}
-    for review in all_reviews:
-        r = int(review['rating'])
-        if r >= 5:
-            rating_distribution[5] += 1
-        elif r >= 4:
-            rating_distribution[4] += 1
-        elif r >= 3:
-            rating_distribution[3] += 1
-        elif r >= 2:
-            rating_distribution[2] += 1
-        else:
-            rating_distribution[1] += 1
+    for r in all_reviews:
+        bucket = min(5, max(1, int(r.rating)))
+        rating_distribution[bucket] += 1
 
-    # 转换为百分比
-    total_reviews = len(all_reviews)
+    total = len(all_reviews)
     rating_percentages = {}
     for k, v in rating_distribution.items():
-        rating_percentages[k] = round((v / total_reviews * 100), 1) if total_reviews > 0 else 0
+        rating_percentages[k] = round((v / total * 100), 1) if total > 0 else 0
 
     return jsonify({
         'success': True,
-        'reviews': paginated_reviews,
+        'reviews': reviews,
         'total': total,
         'page': page,
-        'pages': (total + per_page - 1) // per_page,
+        'pages': pagination.pages,
         'rating_distribution': rating_percentages,
         'avg_rating': dest.rating
     })
@@ -4789,19 +4787,18 @@ def get_reviews(dest_id):
 @app.route('/api/reviews/<int:dest_id>/add', methods=['POST'])
 @login_required
 def add_review(dest_id):
-    """添加评论"""
+    """添加评论（数据库版）"""
     dest = db.session.get(Destination, dest_id)
     if not dest:
         return jsonify({'success': False, 'error': '景点不存在'}), 404
 
-    data = request.get_json()
+    data = request.get_json(silent=True)
     if not data:
         return jsonify({'success': False, 'error': '请求体必须为JSON格式'}), 400
 
     from services.validators import validate_rating, sanitize_string
     rating = validate_rating(data.get('rating'))
     content = sanitize_string(data.get('content', ''), 500)
-    visit_date = data.get('visit_date')
 
     if rating is None:
         return jsonify({'success': False, 'error': '评分必须在1-5之间'}), 400
@@ -4810,25 +4807,18 @@ def add_review(dest_id):
 
     user = db.session.get(User, session['user_id'])
 
-    # 这里应该保存到数据库，但为了简化，我们先更新缓存
-    cache_key = f"reviews:{dest_id}"
-    if cache_key not in _reviews_cache:
-        _reviews_cache[cache_key] = generate_random_reviews(dest_id, dest.name, random.randint(10, 20))
-
-    new_review = {
-        'id': len(_reviews_cache[cache_key]) + 1,
-        'dest_id': dest_id,
-        'username': user.username,
-        'avatar_color': random.choice(['bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500']),
-        'rating': rating,
-        'content': content,
-        'created_at': datetime.now().strftime('%Y-%m-%d'),
-        'likes': 0,
-        'images': [],
-        'user_level': '钻石'
-    }
-
-    _reviews_cache[cache_key].insert(0, new_review)
+    # 写入数据库
+    review = Review(
+        destination_id=dest_id,
+        user_id=user.id,
+        username=user.username,
+        rating=rating,
+        content=content,
+        images='[]',
+        likes=0,
+        status='approved'
+    )
+    db.session.add(review)
 
     # 更新景点评分
     total_rating = dest.rating * dest.review_count + rating
@@ -4839,143 +4829,93 @@ def add_review(dest_id):
     return jsonify({
         'success': True,
         'message': '评论成功',
-        'review': new_review
+        'review': _review_to_dict(review)
     })
 
 
 @app.route('/api/reviews/<int:dest_id>/edit', methods=['POST'])
 @login_required
 def edit_review(dest_id):
-    """修改评论"""
+    """修改评论（数据库版）"""
     dest = db.session.get(Destination, dest_id)
     if not dest:
         return jsonify({'success': False, 'error': '景点不存在'}), 404
 
-    data = request.get_json()
-    review_id = data.get('review_id')
-    rating = data.get('rating')
-    content = data.get('content')
-    
-    if not review_id:
-        return jsonify({'success': False, 'error': '缺少评论ID'}), 400
-    
-    if not rating or not content:
-        return jsonify({'success': False, 'error': '请填写评分和评论内容'}), 400
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({'success': False, 'error': '请求体必须为JSON格式'}), 400
 
-    try:
-        rating = float(rating)
-        if rating < 1 or rating > 5:
-            return jsonify({'success': False, 'error': '评分必须在1-5之间'}), 400
-    except:
-        return jsonify({'success': False, 'error': '评分格式错误'}), 400
+    from services.validators import validate_rating, validate_positive_int, sanitize_string
+
+    review_id, err = validate_positive_int(data.get('review_id'), '评论ID')
+    if err:
+        return jsonify({'success': False, 'error': err}), 400
+
+    rating = validate_rating(data.get('rating'))
+    content = sanitize_string(data.get('content', ''), 500)
+
+    if rating is None:
+        return jsonify({'success': False, 'error': '评分必须在1-5之间'}), 400
+    if not content:
+        return jsonify({'success': False, 'error': '评论内容不能为空'}), 400
 
     user = db.session.get(User, session['user_id'])
 
-    # 更新缓存中的评论
-    cache_key = f"reviews:{dest_id}"
-    if cache_key not in _reviews_cache:
+    # 从数据库查找评论
+    review = Review.query.filter_by(id=review_id, destination_id=dest_id).first()
+    if not review:
         return jsonify({'success': False, 'error': '评论不存在'}), 404
 
-    reviews = _reviews_cache[cache_key]
-    review_found = False
-    old_rating = None
-    
-    for i, review in enumerate(reviews):
-        if review['id'] == review_id:
-            # 检查是否是用户的评论
-            if review['username'] != user.username:
-                return jsonify({'success': False, 'error': '只能修改自己的评论'}), 403
-            
-            old_rating = review['rating']
-            reviews[i]['rating'] = rating
-            reviews[i]['content'] = content
-            reviews[i]['created_at'] = datetime.now().strftime('%Y-%m-%d')  # 更新修改时间
-            review_found = True
-            break
-    
-    if not review_found:
-        return jsonify({'success': False, 'error': '评论不存在'}), 404
+    # 检查权限：只有自己的评论或管理员可修改
+    if review.user_id != user.id and review.username != user.username:
+        return jsonify({'success': False, 'error': '只能修改自己的评论'}), 403
 
-    # 更新景点评分（扣除旧评分，添加新评分）
-    if old_rating is not None:
+    old_rating = review.rating
+    review.rating = rating
+    review.content = content
+    review.updated_at = datetime.now()
+
+    # 更新景点评分
+    if dest.review_count > 0:
         total_rating = dest.rating * dest.review_count - old_rating + rating
         dest.rating = round(total_rating / dest.review_count, 1)
-    
+
     db.session.commit()
 
     return jsonify({
         'success': True,
         'message': '评论修改成功',
-        'review': reviews[i]
+        'review': _review_to_dict(review)
     })
 
 
 @app.route('/reviews/<int:dest_id>')
 def reviews_page(dest_id):
-    """评论列表页面"""
+    """评论列表页面（数据库版）"""
     dest = db.session.get(Destination, dest_id)
     if not dest:
         abort(404)
 
-    # 获取评论
-    cache_key = f"reviews:{dest_id}"
-    if cache_key not in _reviews_cache:
-        review_count = random.randint(10, 20)
-        _reviews_cache[cache_key] = generate_random_reviews(dest_id, dest.name, review_count)
-
-    all_reviews = _reviews_cache[cache_key]
+    # 确保评论存在
+    _ensure_reviews_exist(dest_id, dest.name)
 
     # 分页
     page = request.args.get('page', 1, type=int)
     per_page = 10
-    total = len(all_reviews)
-    pages = (total + per_page - 1) // per_page
-    start = (page - 1) * per_page
-    end = start + per_page
-    paginated_reviews = all_reviews[start:end]
 
-    # 创建分页对象
-    class Pagination:
-        def __init__(self):
-            self.page = page
-            self.per_page = per_page
-            self.total = total
-            self.pages = pages
-            self.has_prev = page > 1
-            self.has_next = page < pages
-            self.prev_num = page - 1 if page > 1 else None
-            self.next_num = page + 1 if page < pages else None
+    pagination = Review.query.filter_by(destination_id=dest_id, status='approved') \
+        .order_by(Review.created_at.desc()) \
+        .paginate(page=page, per_page=per_page, error_out=False)
 
-        def iter_pages(self):
-            pages_list = []
-            if self.pages <= 7:
-                pages_list = list(range(1, self.pages + 1))
-            else:
-                if self.page <= 4:
-                    pages_list = [1, 2, 3, 4, 5, '...', self.pages]
-                elif self.page >= self.pages - 3:
-                    pages_list = [1, '...', self.pages - 4, self.pages - 3, self.pages - 2, self.pages - 1, self.pages]
-                else:
-                    pages_list = [1, '...', self.page - 1, self.page, self.page + 1, '...', self.pages]
-            return pages_list
-
-    pagination = Pagination()
+    paginated_reviews = [_review_to_dict(r) for r in pagination.items]
 
     # 计算评分分布
+    all_reviews = Review.query.filter_by(destination_id=dest_id, status='approved').all()
+    total = len(all_reviews)
     rating_distribution = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0}
-    for review in all_reviews:
-        r = int(review['rating'])
-        if r >= 5:
-            rating_distribution[5] += 1
-        elif r >= 4:
-            rating_distribution[4] += 1
-        elif r >= 3:
-            rating_distribution[3] += 1
-        elif r >= 2:
-            rating_distribution[2] += 1
-        else:
-            rating_distribution[1] += 1
-
+    for r in all_reviews:
+        bucket = min(5, max(1, int(r.rating)))
+        rating_distribution[bucket] += 1
     rating_percentages = {}
     for k, v in rating_distribution.items():
         rating_percentages[k] = round((v / total * 100), 1) if total > 0 else 0
@@ -4984,17 +4924,13 @@ def reviews_page(dest_id):
     if 'user_id' in session:
         current_user = db.session.get(User, session['user_id'])
 
-    # 随机背景图片
     bg_image = random.choice(BACKGROUND_IMAGES)['url']
-
-    # 当前时间
     now = datetime.now()
 
-    # 创建 stats 变量
     stats = {
         'total_reviews': total,
-        'positive_reviews': len([r for r in all_reviews if r.get('rating', 0) >= 4]),
-        'pending_reviews': 0,
+        'positive_reviews': len([r for r in all_reviews if r.rating >= 4]),
+        'pending_reviews': Review.query.filter_by(destination_id=dest_id, status='pending').count(),
         'deleted_reviews': 0
     }
 
@@ -5459,7 +5395,7 @@ def api_performance_stats():
         # 数据库统计
         total_destinations = Destination.query.count()
         total_users = User.query.count()
-        total_reviews = sum([len(v) for v in _reviews_cache.values()]) if _reviews_cache else 0
+        total_reviews = Review.query.count()
 
         # 热门分类统计
         category_stats = db.session.query(
@@ -5489,7 +5425,7 @@ def api_performance_stats():
             'provinces': [{'name': prov, 'count': count} for prov, count in province_stats],
             'rating_distribution': [{'rating': int(rating), 'count': count} for rating, count in rating_distribution],
             'cache': {
-                'reviews_cached': len(_reviews_cache),
+                'reviews_cached': total_reviews,  # 数据库中评论数
                 'background_images': len(BACKGROUND_IMAGES)
             }
         }
