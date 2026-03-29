@@ -8839,6 +8839,186 @@ def api_v2_home_data():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/docs')
+def api_docs_page():
+    """交互式 API 文档页面"""
+    sections = [
+        {
+            'id': 'auth', 'name': '认证', 'icon': '🔐',
+            'endpoints': [
+                {'methods': ['POST'], 'path': '/api/register', 'desc': '邮箱注册', 'params': [{'name': 'username', 'in': 'body', 'type': 'string', 'required': True, 'desc': '用户名'}, {'name': 'email', 'in': 'body', 'type': 'string', 'required': True, 'desc': '邮箱'}, {'name': 'password', 'in': 'body', 'type': 'string', 'required': True, 'desc': '密码'}], 'response': '{"success": true, "message": "注册成功"}'},
+                {'methods': ['POST'], 'path': '/api/register/phone', 'desc': '手机号注册', 'params': [{'name': 'phone', 'in': 'body', 'type': 'string', 'required': True, 'desc': '手机号'}, {'name': 'code', 'in': 'body', 'type': 'string', 'required': True, 'desc': '验证码'}], 'response': '{"success": true}'},
+                {'methods': ['POST'], 'path': '/api/login', 'desc': '密码登录', 'params': [{'name': 'username', 'in': 'body', 'type': 'string', 'required': True, 'desc': '用户名/手机/邮箱'}, {'name': 'password', 'in': 'body', 'type': 'string', 'required': True, 'desc': '密码'}], 'response': '{"success": true, "user": {"id": 1, "username": "xxx"}}'},
+                {'methods': ['POST'], 'path': '/api/login/code', 'desc': '验证码登录', 'params': [{'name': 'phone', 'in': 'body', 'type': 'string', 'required': True, 'desc': '手机号'}, {'name': 'code', 'in': 'body', 'type': 'string', 'required': True, 'desc': '验证码'}], 'response': '{"success": true}'},
+                {'methods': ['POST'], 'path': '/api/logout', 'desc': '退出登录', 'params': [], 'response': '{"success": true}'},
+                {'methods': ['POST'], 'path': '/api/send_code', 'desc': '发送验证码', 'params': [{'name': 'phone', 'in': 'body', 'type': 'string', 'required': True, 'desc': '手机号'}], 'response': '{"success": true, "debug_code": "123456"}'},
+                {'methods': ['GET'], 'path': '/auth/<provider>', 'desc': '社交登录跳转 (wechat/qq/weibo)', 'params': [], 'response': '302 Redirect'},
+            ]
+        },
+        {
+            'id': 'user', 'name': '用户', 'icon': '👤',
+            'endpoints': [
+                {'methods': ['GET'], 'path': '/api/user/status', 'desc': '登录状态', 'params': [], 'response': '{"logged_in": true, "user": {...}}'},
+                {'methods': ['GET'], 'path': '/api/user/stats', 'desc': '用户统计', 'params': [], 'response': '{"favorites": 10, "views": 50}'},
+                {'methods': ['POST'], 'path': '/api/user/profile/update', 'desc': '更新资料', 'params': [{'name': 'nickname', 'in': 'body', 'type': 'string', 'required': False, 'desc': '昵称'}], 'response': '{"success": true}'},
+                {'methods': ['POST'], 'path': '/api/user/password/change', 'desc': '修改密码', 'params': [{'name': 'old_password', 'in': 'body', 'type': 'string', 'required': True, 'desc': '旧密码'}, {'name': 'new_password', 'in': 'body', 'type': 'string', 'required': True, 'desc': '新密码'}], 'response': '{"success": true}'},
+                {'methods': ['GET'], 'path': '/api/user/export', 'desc': '导出用户数据', 'params': [], 'response': 'JSON file'},
+                {'methods': ['POST'], 'path': '/api/users/<id>/follow', 'desc': '关注/取消关注', 'params': [], 'response': '{"success": true, "following": true}'},
+            ]
+        },
+        {
+            'id': 'dest', 'name': '景点', 'icon': '🏞️',
+            'endpoints': [
+                {'methods': ['GET'], 'path': '/', 'desc': '首页 (支持分页/筛选)', 'params': [{'name': 'page', 'in': 'query', 'type': 'int', 'required': False, 'desc': '页码'}, {'name': 'province', 'in': 'query', 'type': 'string', 'required': False, 'desc': '省份'}, {'name': 'category', 'in': 'query', 'type': 'string', 'required': False, 'desc': '分类'}, {'name': 'sort', 'in': 'query', 'type': 'string', 'required': False, 'desc': '排序 (rating/name/popularity)'}], 'response': 'HTML page'},
+                {'methods': ['GET'], 'path': '/api/destinations/<id>', 'desc': '景点详情 API', 'params': [], 'response': '{"id": 1, "name": "故宫", "city": "北京"}'},
+                {'methods': ['POST'], 'path': '/api/destinations/<id>/like', 'desc': '点赞景点', 'params': [], 'response': '{"success": true, "likes": 101}'},
+                {'methods': ['POST'], 'path': '/api/destinations/<id>/checkin', 'desc': '签到景点', 'params': [], 'response': '{"success": true}'},
+                {'methods': ['GET'], 'path': '/api/destinations/<id>/checkins', 'desc': '签到列表', 'params': [], 'response': '{"checkins": [...]}'},
+            ]
+        },
+        {
+            'id': 'search', 'name': '搜索', 'icon': '🔍',
+            'endpoints': [
+                {'methods': ['GET'], 'path': '/api/search', 'desc': '搜索景点', 'params': [{'name': 'q', 'in': 'query', 'type': 'string', 'required': True, 'desc': '关键词'}, {'name': 'page', 'in': 'query', 'type': 'int', 'required': False, 'desc': '页码'}, {'name': 'limit', 'in': 'query', 'type': 'int', 'required': False, 'desc': '每页数量'}], 'response': '{"results": [...], "total": 100}'},
+                {'methods': ['GET'], 'path': '/api/search/suggestions', 'desc': '搜索建议 (支持拼音)', 'params': [{'name': 'q', 'in': 'query', 'type': 'string', 'required': True, 'desc': '关键词/拼音'}, {'name': 'limit', 'in': 'query', 'type': 'int', 'required': False, 'desc': '数量限制'}], 'response': '{"suggestions": [...]}'},
+                {'methods': ['GET'], 'path': '/api/search/history', 'desc': '搜索历史', 'params': [], 'response': '{"history": [...]}'},
+                {'methods': ['POST'], 'path': '/api/search/history/clear', 'desc': '清空搜索历史', 'params': [], 'response': '{"success": true}'},
+                {'methods': ['GET'], 'path': '/api/click/history', 'desc': '浏览历史', 'params': [], 'response': '{"history": [...]}'},
+            ]
+        },
+        {
+            'id': 'fav', 'name': '收藏', 'icon': '❤️',
+            'endpoints': [
+                {'methods': ['POST'], 'path': '/api/favorite/add', 'desc': '添加收藏', 'params': [{'name': 'dest_id', 'in': 'body', 'type': 'int', 'required': True, 'desc': '景点ID'}], 'response': '{"success": true}'},
+                {'methods': ['POST'], 'path': '/api/favorite/remove', 'desc': '取消收藏', 'params': [{'name': 'dest_id', 'in': 'body', 'type': 'int', 'required': True, 'desc': '景点ID'}], 'response': '{"success": true}'},
+                {'methods': ['GET'], 'path': '/api/favorite/list', 'desc': '收藏列表', 'params': [{'name': 'page', 'in': 'query', 'type': 'int', 'required': False, 'desc': '页码'}], 'response': '{"favorites": [...]}'},
+                {'methods': ['GET'], 'path': '/api/favorite/check/<id>', 'desc': '检查收藏', 'params': [], 'response': '{"favorited": true}'},
+                {'methods': ['POST'], 'path': '/api/favorite/batch', 'desc': '批量操作', 'params': [{'name': 'action', 'in': 'body', 'type': 'string', 'required': True, 'desc': 'add/remove'}, {'name': 'dest_ids', 'in': 'body', 'type': 'array', 'required': True, 'desc': '景点ID列表'}], 'response': '{"success": true}'},
+            ]
+        },
+        {
+            'id': 'review', 'name': '评论', 'icon': '💬',
+            'endpoints': [
+                {'methods': ['GET'], 'path': '/api/reviews/<id>', 'desc': '获取评论', 'params': [{'name': 'page', 'in': 'query', 'type': 'int', 'required': False, 'desc': '页码'}, {'name': 'sort', 'in': 'query', 'type': 'string', 'required': False, 'desc': 'newest/oldest'}], 'response': '{"reviews": [...], "total": 50}'},
+                {'methods': ['POST'], 'path': '/api/reviews/<id>/add', 'desc': '添加评论', 'params': [{'name': 'content', 'in': 'body', 'type': 'string', 'required': True, 'desc': '评论内容'}, {'name': 'rating', 'in': 'body', 'type': 'int', 'required': True, 'desc': '评分 1-5'}], 'response': '{"success": true}'},
+                {'methods': ['POST'], 'path': '/api/reviews/<id>/edit', 'desc': '编辑评论', 'params': [{'name': 'content', 'in': 'body', 'type': 'string', 'required': True, 'desc': '评论内容'}], 'response': '{"success": true}'},
+            ]
+        },
+        {
+            'id': 'rec', 'name': '推荐', 'icon': '⭐',
+            'endpoints': [
+                {'methods': ['GET'], 'path': '/api/recommendations/personalized', 'desc': '个性化推荐', 'params': [{'name': 'limit', 'in': 'query', 'type': 'int', 'required': False, 'desc': '数量'}], 'response': '{"recommendations": [...]}'},
+                {'methods': ['GET'], 'path': '/api/recommendations/collaborative', 'desc': '协同过滤推荐', 'params': [], 'response': '{"recommendations": [...]}'},
+                {'methods': ['GET'], 'path': '/api/recommendations/hot', 'desc': '热门推荐', 'params': [{'name': 'category', 'in': 'query', 'type': 'string', 'required': False, 'desc': '分类筛选'}], 'response': '{"recommendations": [...]}'},
+                {'methods': ['GET'], 'path': '/api/recommendations/similar/<id>', 'desc': '相似景点推荐', 'params': [], 'response': '{"similar": [...]}'},
+            ]
+        },
+        {
+            'id': 'trip', 'name': '行程', 'icon': '🗺️',
+            'endpoints': [
+                {'methods': ['GET'], 'path': '/api/trips', 'desc': '行程列表', 'params': [], 'response': '{"trips": [...]}'},
+                {'methods': ['POST'], 'path': '/api/trips', 'desc': '创建行程', 'params': [{'name': 'title', 'in': 'body', 'type': 'string', 'required': True, 'desc': '行程标题'}, {'name': 'start_date', 'in': 'body', 'type': 'date', 'required': True, 'desc': '开始日期'}], 'response': '{"success": true, "trip_id": 1}'},
+                {'methods': ['GET'], 'path': '/api/trips/<id>', 'desc': '行程详情', 'params': [], 'response': '{"trip": {...}}'},
+                {'methods': ['PUT'], 'path': '/api/trips/<id>', 'desc': '更新行程', 'params': [], 'response': '{"success": true}'},
+                {'methods': ['DELETE'], 'path': '/api/trips/<id>', 'desc': '删除行程', 'params': [], 'response': '{"success": true}'},
+                {'methods': ['POST'], 'path': '/api/trips/<id>/items', 'desc': '添加行程项', 'params': [{'name': 'dest_id', 'in': 'body', 'type': 'int', 'required': True, 'desc': '景点ID'}, {'name': 'day', 'in': 'body', 'type': 'int', 'required': True, 'desc': '第几天'}], 'response': '{"success": true}'},
+                {'methods': ['POST'], 'path': '/api/trips/share/<code>', 'desc': '查看分享行程', 'params': [], 'response': '{"trip": {...}}'},
+                {'methods': ['POST'], 'path': '/api/trips/recommend', 'desc': 'AI 推荐行程', 'params': [{'name': 'city', 'in': 'body', 'type': 'string', 'required': True, 'desc': '城市'}, {'name': 'days', 'in': 'body', 'type': 'int', 'required': True, 'desc': '天数'}], 'response': '{"trip_plan": {...}}'},
+                {'methods': ['GET'], 'path': '/api/trips/<id>/export/pdf', 'desc': '导出 PDF', 'params': [], 'response': 'PDF file'},
+            ]
+        },
+        {
+            'id': 'map', 'name': '地图', 'icon': '📍',
+            'endpoints': [
+                {'methods': ['GET'], 'path': '/api/map/destinations', 'desc': '景点坐标列表', 'params': [{'name': 'province', 'in': 'query', 'type': 'string', 'required': False, 'desc': '省份筛选'}], 'response': '{"points": [...]}'},
+                {'methods': ['POST'], 'path': '/api/map/route', 'desc': '路线规划', 'params': [{'name': 'origin', 'in': 'body', 'type': 'array', 'required': True, 'desc': '起点 [lng, lat]'}], 'response': '{"route": {...}}'},
+                {'methods': ['GET'], 'path': '/api/map/nearby', 'desc': '附近景点', 'params': [{'name': 'lng', 'in': 'query', 'type': 'float', 'required': True, 'desc': '经度'}, {'name': 'lat', 'in': 'query', 'type': 'float', 'required': True, 'desc': '纬度'}], 'response': '{"nearby": [...]}'},
+                {'methods': ['POST'], 'path': '/api/map/geocode', 'desc': '地址转坐标', 'params': [{'name': 'address', 'in': 'body', 'type': 'string', 'required': True, 'desc': '地址'}], 'response': '{"lng": 116.4, "lat": 39.9}'},
+                {'methods': ['POST'], 'path': '/api/map/reverse-geocode', 'desc': '坐标转地址', 'params': [{'name': 'lng', 'in': 'body', 'type': 'float', 'required': True, 'desc': '经度'}], 'response': '{"address": "..."}'},
+            ]
+        },
+        {
+            'id': 'nearby', 'name': '附近', 'icon': '📌',
+            'endpoints': [
+                {'methods': ['GET'], 'path': '/api/nearby/search', 'desc': '附近搜索', 'params': [{'name': 'lng', 'in': 'query', 'type': 'float', 'required': True, 'desc': '经度'}, {'name': 'lat', 'in': 'query', 'type': 'float', 'required': True, 'desc': '纬度'}, {'name': 'radius', 'in': 'query', 'type': 'int', 'required': False, 'desc': '半径(米)'}], 'response': '{"results": [...]}'},
+                {'methods': ['GET'], 'path': '/api/nearby/categories', 'desc': '附近分类', 'params': [], 'response': '{"categories": [...]}'},
+                {'methods': ['GET'], 'path': '/api/nearby/destination/<id>', 'desc': '景点附近信息', 'params': [], 'response': '{"nearby_food": [], "nearby_hotels": []}'},
+            ]
+        },
+        {
+            'id': 'weather', 'name': '天气/美食', 'icon': '🌤️',
+            'endpoints': [
+                {'methods': ['GET'], 'path': '/api/weather/<city>', 'desc': '城市天气', 'params': [], 'response': '{"temp": 25, "weather": "晴"}'},
+                {'methods': ['GET'], 'path': '/api/weather/forecast/<city>', 'desc': '7天预报', 'params': [], 'response': '{"forecast": [...]}'},
+                {'methods': ['GET'], 'path': '/api/food/<city>', 'desc': '城市美食', 'params': [], 'response': '{"foods": [...]}'},
+                {'methods': ['GET'], 'path': '/api/food/search', 'desc': '搜索美食', 'params': [{'name': 'q', 'in': 'query', 'type': 'string', 'required': True, 'desc': '关键词'}], 'response': '{"results": [...]}'},
+            ]
+        },
+        {
+            'id': 'ai', 'name': 'AI 助手', 'icon': '🤖',
+            'endpoints': [
+                {'methods': ['POST'], 'path': '/api/assistant', 'desc': '对话接口', 'params': [{'name': 'message', 'in': 'body', 'type': 'string', 'required': True, 'desc': '用户消息'}, {'name': 'session_id', 'in': 'body', 'type': 'string', 'required': False, 'desc': '会话ID'}], 'response': '{"reply": "...", "suggestions": [...]}'},
+                {'methods': ['POST'], 'path': '/api/assistant/stream', 'desc': '流式对话 (SSE)', 'params': [{'name': 'message', 'in': 'body', 'type': 'string', 'required': True, 'desc': '用户消息'}], 'response': 'text/event-stream'},
+                {'methods': ['GET'], 'path': '/api/assistant/history/<sid>', 'desc': '对话历史', 'params': [], 'response': '{"messages": [...]}'},
+                {'methods': ['GET'], 'path': '/api/assistant/tools', 'desc': '可用工具列表', 'params': [], 'response': '{"tools": [...]}'},
+                {'methods': ['GET'], 'path': '/api/ai/status', 'desc': 'AI 服务状态', 'params': [], 'response': '{"enabled": true, "provider": "deepseek"}'},
+                {'methods': ['POST'], 'path': '/api/ai/toggle', 'desc': '开关 AI 模式', 'params': [{'name': 'enabled', 'in': 'body', 'type': 'bool', 'required': True, 'desc': '是否启用'}], 'response': '{"success": true}'},
+                {'methods': ['GET'], 'path': '/api/ai/providers', 'desc': 'AI 提供商列表', 'params': [], 'response': '{"providers": [...]}'},
+                {'methods': ['POST'], 'path': '/api/ai/switch-provider', 'desc': '切换 AI 提供商', 'params': [{'name': 'provider', 'in': 'body', 'type': 'string', 'required': True, 'desc': '提供商名'}], 'response': '{"success": true}'},
+                {'methods': ['POST'], 'path': '/api/ai/test', 'desc': '测试 AI 连接', 'params': [], 'response': '{"success": true, "response": "..."}'},
+                {'methods': ['GET'], 'path': '/api/ai/config', 'desc': 'AI 配置 (脱敏)', 'params': [], 'response': '{"config": {...}}'},
+            ]
+        },
+        {
+            'id': 'security', 'name': '安全', 'icon': '🛡️',
+            'endpoints': [
+                {'methods': ['POST'], 'path': '/api/security/check-password', 'desc': '密码强度检查', 'params': [{'name': 'password', 'in': 'body', 'type': 'string', 'required': True, 'desc': '密码'}], 'response': '{"strength": "strong", "score": 85}'},
+                {'methods': ['POST'], 'path': '/api/security/validate-csrf', 'desc': '验证 CSRF', 'params': [], 'response': '{"valid": true}'},
+                {'methods': ['GET'], 'path': '/api/security/login-attempts', 'desc': '登录尝试次数', 'params': [], 'response': '{"attempts": 3}'},
+                {'methods': ['POST'], 'path': '/api/login/secure', 'desc': '安全登录', 'params': [], 'response': '{"success": true}'},
+                {'methods': ['GET'], 'path': '/api/security/rate-limit-check', 'desc': '速率限制状态', 'params': [], 'response': '{"remaining": 95}'},
+            ]
+        },
+        {
+            'id': 'admin', 'name': '后台管理', 'icon': '⚙️',
+            'endpoints': [
+                {'methods': ['GET', 'POST'], 'path': '/admin/login', 'desc': '管理员登录', 'params': [], 'response': 'HTML / Redirect'},
+                {'methods': ['GET'], 'path': '/admin', 'desc': '仪表盘', 'params': [], 'response': 'HTML'},
+                {'methods': ['GET'], 'path': '/api/admin/destinations', 'desc': '景点列表 (后台)', 'params': [{'name': 'page', 'in': 'query', 'type': 'int', 'required': False, 'desc': '页码'}, {'name': 'search', 'in': 'query', 'type': 'string', 'required': False, 'desc': '搜索词'}], 'response': '{"destinations": [...], "total": 1430}'},
+                {'methods': ['POST'], 'path': '/api/admin/destinations', 'desc': '创建景点', 'params': [{'name': 'name', 'in': 'body', 'type': 'string', 'required': True, 'desc': '景点名'}, {'name': 'city', 'in': 'body', 'type': 'string', 'required': True, 'desc': '城市'}], 'response': '{"success": true, "id": 1431}'},
+                {'methods': ['PUT'], 'path': '/api/admin/destinations/<id>', 'desc': '更新景点', 'params': [], 'response': '{"success": true}'},
+                {'methods': ['DELETE'], 'path': '/api/admin/destinations/<id>', 'desc': '删除景点', 'params': [], 'response': '{"success": true}'},
+                {'methods': ['GET'], 'path': '/api/admin/users', 'desc': '用户列表 (后台)', 'params': [], 'response': '{"users": [...]}'},
+                {'methods': ['PUT'], 'path': '/api/admin/users/<id>', 'desc': '更新用户', 'params': [], 'response': '{"success": true}'},
+                {'methods': ['DELETE'], 'path': '/api/admin/users/<id>', 'desc': '删除用户', 'params': [], 'response': '{"success": true}'},
+            ]
+        },
+        {
+            'id': 'system', 'name': '系统', 'icon': '🔧',
+            'endpoints': [
+                {'methods': ['GET'], 'path': '/api/system/health', 'desc': '健康检查', 'params': [], 'response': '{"status": "ok", "db": "ok", "ai": "ok"}'},
+                {'methods': ['GET'], 'path': '/api/mobile/config', 'desc': '移动端配置', 'params': [], 'response': '{"version": "1.0", "features": [...]}'},
+                {'methods': ['GET'], 'path': '/api/performance/stats', 'desc': '性能统计', 'params': [], 'response': '{"response_time": 45, "cache_hit": 0.8}'},
+                {'methods': ['GET'], 'path': '/api/random-background', 'desc': '随机背景图', 'params': [], 'response': '{"image": "...", "name": "故宫", "location": "北京"}'},
+                {'methods': ['GET'], 'path': '/api/backgrounds/batch', 'desc': '批量背景图', 'params': [{'name': 'count', 'in': 'query', 'type': 'int', 'required': False, 'desc': '数量'}], 'response': '{"images": [...]}'},
+                {'methods': ['GET'], 'path': '/api/v2/site/info', 'desc': '站点信息', 'params': [], 'response': '{"site": {...}}'},
+                {'methods': ['GET'], 'path': '/api/v2/home/data', 'desc': '首页聚合数据', 'params': [], 'response': '{"hot": [], "top": [], "provinces": []}'},
+            ]
+        },
+    ]
+    for s in sections:
+        s['count'] = len(s['endpoints'])
+    total = sum(s['count'] for s in sections)
+    method_counts = {'get': 0, 'post': 0, 'put': 0, 'delete': 0}
+    for s in sections:
+        for ep in s['endpoints']:
+            for m in ep['methods']:
+                key = m.lower()
+                if key in method_counts:
+                    method_counts[key] += 1
+    return render_template('api_docs.html', sections=sections, total_count=total, method_counts=method_counts)
+
+
 # ==================== 启动应用 ====================
 if __name__ == '__main__':
     import logging

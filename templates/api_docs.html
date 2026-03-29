@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}API 文档 - 智能旅游助手{% endblock %}
+
+{% block extra_css %}
+<style>
+    .api-section { margin-bottom: 2rem; }
+    .api-section h3 { 
+        font-size: 1.3rem; font-weight: 700; color: #333;
+        padding-bottom: 0.75rem; border-bottom: 2px solid #e5e7eb;
+        margin-bottom: 1rem;
+    }
+    .endpoint-card {
+        background: white; border-radius: 12px; padding: 1rem 1.25rem;
+        margin-bottom: 0.75rem; border-left: 4px solid #e5e7eb;
+        transition: all 0.2s ease; cursor: pointer;
+    }
+    .endpoint-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateX(4px); }
+    .method-badge {
+        display: inline-block; padding: 2px 10px; border-radius: 6px;
+        font-size: 0.75rem; font-weight: 700; color: white; min-width: 50px; text-align: center;
+    }
+    .method-get { background: #22c55e; }
+    .method-post { background: #3b82f6; }
+    .method-put { background: #f59e0b; }
+    .method-delete { background: #ef4444; }
+    .endpoint-path { font-family: 'Fira Code', monospace; font-size: 0.9rem; color: #1f2937; margin-left: 0.75rem; }
+    .endpoint-desc { font-size: 0.85rem; color: #6b7280; margin-left: 0.75rem; }
+    .endpoint-details { display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #f3f4f6; }
+    .endpoint-details.show { display: block; }
+    .param-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .param-table th { text-align: left; padding: 0.5rem; background: #f9fafb; color: #6b7280; font-weight: 600; }
+    .param-table td { padding: 0.5rem; border-top: 1px solid #f3f4f6; }
+    .param-required { color: #ef4444; font-size: 0.75rem; font-weight: 600; }
+    .param-optional { color: #9ca3af; font-size: 0.75rem; }
+    .response-example {
+        background: #1e293b; color: #e2e8f0; border-radius: 8px;
+        padding: 1rem; font-family: 'Fira Code', monospace; font-size: 0.8rem;
+        overflow-x: auto; margin-top: 0.75rem;
+    }
+    .sidebar-nav { position: sticky; top: 100px; }
+    .sidebar-nav a {
+        display: block; padding: 0.4rem 1rem; color: #6b7280;
+        font-size: 0.9rem; border-left: 3px solid transparent;
+        transition: all 0.2s ease; text-decoration: none;
+    }
+    .sidebar-nav a:hover, .sidebar-nav a.active {
+        color: var(--primary); border-left-color: var(--primary);
+        background: rgba(102, 126, 234, 0.05);
+    }
+    .search-box {
+        width: 100%; padding: 0.75rem 1rem; border: 2px solid #e5e7eb;
+        border-radius: 12px; font-size: 0.95rem; transition: all 0.3s;
+    }
+    .search-box:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); outline: none; }
+    .stats-bar {
+        display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;
+    }
+    .stat-chip {
+        background: rgba(102, 126, 234, 0.1); color: var(--primary);
+        padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block main_class %}container-fluid py-4{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- 左侧导航 -->
+    <div class="col-md-3 col-lg-2 mb-4">
+        <div class="sidebar-nav">
+            <input type="text" id="searchInput" class="search-box mb-3" placeholder="🔍 搜索接口..." oninput="filterEndpoints()">
+            <nav id="sidebarNav">
+                {% for section in sections %}
+                <a href="#{{ section.id }}" onclick="scrollToSection('{{ section.id }}')">{{ section.icon }} {{ section.name }} <span class="text-muted" style="font-size:0.75rem">({{ section.count }})</span></a>
+                {% endfor %}
+            </nav>
+        </div>
+    </div>
+
+    <!-- 右侧内容 -->
+    <div class="col-md-9 col-lg-10">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <h2 class="mb-1"><i class="fas fa-book text-primary me-2"></i>API 文档</h2>
+                <p class="text-muted mb-0">智能旅游助手 REST API 接口参考 · 共 {{ total_count }} 个端点</p>
+            </div>
+            <a href="/docs/API.md" class="btn btn-outline-primary btn-sm"><i class="fas fa-file-alt me-1"></i>Markdown</a>
+        </div>
+
+        <div class="stats-bar">
+            <span class="stat-chip"><span class="method-badge method-get me-1" style="font-size:0.7rem">GET</span> {{ method_counts.get }} 个</span>
+            <span class="stat-chip"><span class="method-badge method-post me-1" style="font-size:0.7rem">POST</span> {{ method_counts.post }} 个</span>
+            <span class="stat-chip"><span class="method-badge method-put me-1" style="font-size:0.7rem">PUT</span> {{ method_counts.put }} 个</span>
+            <span class="stat-chip"><span class="method-badge method-delete me-1" style="font-size:0.7rem">DEL</span> {{ method_counts.delete }} 个</span>
+        </div>
+
+        <div id="apiContent">
+            {% for section in sections %}
+            <div class="api-section" id="section-{{ section.id }}">
+                <h3>{{ section.icon }} {{ section.name }}</h3>
+                {% for ep in section.endpoints %}
+                <div class="endpoint-card" data-path="{{ ep.path }}" data-desc="{{ ep.desc }}" onclick="toggleDetails(this)">
+                    <div class="d-flex align-items-center flex-wrap">
+                        {% for m in ep.methods %}
+                        <span class="method-badge method-{{ m|lower }}">{{ m }}</span>
+                        {% endfor %}
+                        <code class="endpoint-path">{{ ep.path }}</code>
+                        <span class="endpoint-desc ms-2">{{ ep.desc }}</span>
+                    </div>
+                    <div class="endpoint-details">
+                        {% if ep.params %}
+                        <h6 class="text-muted mb-2">参数</h6>
+                        <table class="param-table mb-3">
+                            <thead><tr><th>名称</th><th>位置</th><th>类型</th><th>必填</th><th>说明</th></tr></thead>
+                            <tbody>
+                                {% for p in ep.params %}
+                                <tr>
+                                    <td><code>{{ p.name }}</code></td>
+                                    <td>{{ p.in }}</td>
+                                    <td>{{ p.type }}</td>
+                                    <td>{% if p.required %}<span class="param-required">是</span>{% else %}<span class="param-optional">否</span>{% endif %}</td>
+                                    <td>{{ p.desc }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% endif %}
+                        {% if ep.response %}
+                        <h6 class="text-muted mb-2">响应示例</h6>
+                        <div class="response-example">{{ ep.response }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <div id="noResults" class="text-center py-5 d-none">
+            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">没有找到匹配的接口</h5>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleDetails(card) {
+    const details = card.querySelector('.endpoint-details');
+    details.classList.toggle('show');
+}
+
+function scrollToSection(id) {
+    document.getElementById('section-' + id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
+    document.querySelector(`.sidebar-nav a[href="#${id}"]`)?.classList.add('active');
+}
+
+function filterEndpoints() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const cards = document.querySelectorAll('.endpoint-card');
+    let visible = 0;
+    cards.forEach(card => {
+        const path = card.dataset.path.toLowerCase();
+        const desc = card.dataset.desc.toLowerCase();
+        const match = path.includes(q) || desc.includes(q);
+        card.style.display = match ? '' : 'none';
+        if (match) visible++;
+    });
+    document.querySelectorAll('.api-section').forEach(sec => {
+        const hasVisible = sec.querySelectorAll('.endpoint-card:not([style*="display: none"])').length > 0;
+        sec.style.display = hasVisible ? '' : 'none';
+    });
+    document.getElementById('noResults').classList.toggle('d-none', visible > 0);
+}
+
+// 高亮当前 section
+const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            const id = entry.target.id.replace('section-', '');
+            document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
+            document.querySelector(`.sidebar-nav a[href="#${id}"]`)?.classList.add('active');
+        }
+    });
+}, { threshold: 0.3 });
+document.querySelectorAll('.api-section').forEach(s => observer.observe(s));
+</script>
+{% endblock %}
