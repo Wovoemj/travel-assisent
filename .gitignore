@@ -1,6 +1,44 @@
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# 虚拟环境
+venv/
+.venv/
+env/
+
+# 环境变量（不要提交真实密钥）
+.env
+
+# Flask/数据库
 instance/
 *.db
+*.sqlite
+
+# 缓存
 wiki_cache/
-.env
+.cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+logs/
+
+# 上传文件
+uploads/
