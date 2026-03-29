@@ -285,10 +285,10 @@ except ImportError:
 
 # ==================== 配置 ====================
 # 心知天气Key
-SENIVERSE_API_KEY = os.environ.get('SENIVERSE_API_KEY', 'SlwyrUvFR5pMbWwOg')
+SENIVERSE_API_KEY = os.environ.get('SENIVERSE_API_KEY')
 
 # 高德API配置
-GAODE_API_KEY = os.environ.get('GAODE_API_KEY', 'c819cfec11f53d9fa4e022a8fb1b5c48')
+GAODE_API_KEY = os.environ.get('GAODE_API_KEY')
 gaode_api = GaodeAPIManager(GAODE_API_KEY, max_qps=5) if GAODE_API_KEY else None
 
 # ==================== Flask应用初始化 ====================

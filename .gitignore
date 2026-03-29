@@ -1,6 +1,21 @@
 __pycache__/
 *.pyc
+*.pyo
 instance/
 *.db
 wiki_cache/
 .env
+*.log
+exports/
+static/generated_cards/
+wiki_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
