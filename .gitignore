@@ -8,7 +8,7 @@ wiki_cache/
 *.log
 exports/
 static/generated_cards/
-wiki_cache/
+scenic_images/image_index.json
 
 # IDE
 .vscode/

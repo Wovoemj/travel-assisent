@@ -145,17 +145,35 @@ BACKGROUND_IMAGES = load_background_images_from_folder()
 # ==================== 图片匹配函数 ====================
 # ==================== 景点图片缓存 ====================
 _IMAGE_CACHE = None
+_IMAGE_INDEX_FILE = Path("scenic_images/image_index.json")
 
 def _build_image_cache():
-    """启动时构建图片索引缓存，避免每次请求遍历文件系统"""
+    """启动时构建图片索引缓存（带JSON持久化，避免每次遍历文件系统）"""
     global _IMAGE_CACHE
     if _IMAGE_CACHE is not None:
         return _IMAGE_CACHE
-    cache = {}
+
     scenic_images_dir = Path("scenic_images")
     if not scenic_images_dir.exists():
-        _IMAGE_CACHE = cache
-        return cache
+        _IMAGE_CACHE = {}
+        return _IMAGE_CACHE
+
+    # 尝试从JSON索引文件加载（文件存在且scenic_images目录未变更时）
+    if _IMAGE_INDEX_FILE.exists():
+        try:
+            index_mtime = _IMAGE_INDEX_FILE.stat().st_mtime
+            dir_mtime = scenic_images_dir.stat().st_mtime
+            if index_mtime >= dir_mtime:
+                with open(_IMAGE_INDEX_FILE, 'r', encoding='utf-8') as f:
+                    _IMAGE_CACHE = json.load(f)
+                log.info(f"✅ 图片索引从缓存加载: {len(_IMAGE_CACHE)} 条")
+                return _IMAGE_CACHE
+        except Exception as e:
+            log.warning(f"图片索引缓存加载失败，重新构建: {e}")
+
+    # 遍历文件系统构建索引
+    log.info("📁 正在构建图片索引...")
+    cache = {}
     image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
     for sub_dir in scenic_images_dir.iterdir():
         if not sub_dir.is_dir():
@@ -163,17 +181,23 @@ def _build_image_cache():
         images = [f for f in sub_dir.iterdir()
                   if f.is_file() and f.suffix.lower() in image_extensions]
         if images:
-            # 存储文件夹名（用于精确匹配）和所有可能的子串key
             name = sub_dir.name
             cache[name] = f'/static/scenic_images/{name}/{images[0].name}'
-            # 去掉常见后缀做模糊key
             for suffix in ['风景名胜区', '风景名胜', '旅游区', '旅游景区', '景区', '风景区', '遗址', '博物馆', '公园', '寺', '庙']:
                 short = name.replace(suffix, '')
                 if short and short not in cache:
                     cache[short] = f'/static/scenic_images/{name}/{images[0].name}'
-    log.info(f"✅ 图片缓存构建完成: {len(cache)} 个索引")
+
+    # 持久化到JSON文件
+    try:
+        with open(_IMAGE_INDEX_FILE, 'w', encoding='utf-8') as f:
+            json.dump(cache, f, ensure_ascii=False)
+        log.info(f"✅ 图片索引构建并持久化: {len(cache)} 条")
+    except Exception as e:
+        log.warning(f"图片索引持久化失败: {e}")
+
     _IMAGE_CACHE = cache
-    return cache
+    return _IMAGE_CACHE
 
 def match_scenic_image(dest_name, external=False):
     """
