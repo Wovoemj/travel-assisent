@@ -279,71 +279,8 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-<!-- 导航栏 - base.html -->
-<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
-    <div class="container">
-        <a class="navbar-brand d-flex align-items-center" href="/">
-            <div class="gradient-bg p-2 rounded-lg me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                <i class="fas fa-compass text-white" style="font-size: 1.2rem;"></i>
-            </div>
-            <span class="fw-bold" style="font-size: 1.1rem;">智能旅游助手</span>
-        </a>
-
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav me-auto">
-                <li class="nav-item">
-                    <a class="nav-link" href="/">首页</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/chat">智能助手</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/?view=hot">热门景点</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/about">关于</a>
-                </li>
-            </ul>
-
-            <!-- 搜索框 -->
-            <form class="d-flex me-3" action="/search" method="GET">
-                <div class="input-group">
-                    <input type="search" name="q" class="form-control rounded-pill" placeholder="搜索景点..." aria-label="搜索">
-                    <button class="btn btn-outline-primary rounded-pill ms-2" type="submit">
-                        <i class="fas fa-search"></i>
-                    </button>
-                </div>
-            </form>
-
-            <!-- 用户区域 -->
-            <div class="d-flex align-items-center">
-                {% if current_user %}
-                    <div class="dropdown">
-                        <button class="btn btn-light dropdown-toggle d-flex align-items-center" type="button" data-bs-toggle="dropdown">
-                            <div class="gradient-bg text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
-                                {{ current_user.username[0]|upper }}
-                            </div>
-                            <span class="d-none d-md-inline">{{ current_user.username }}</span>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="/profile-page"><i class="fas fa-user me-2 text-primary"></i>个人中心</a></li>
-                            <li><a class="dropdown-item" href="/profile-page"><i class="fas fa-heart me-2 text-danger"></i>我的收藏</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><button class="dropdown-item text-danger" onclick="logout()"><i class="fas fa-sign-out-alt me-2"></i>退出登录</button></li>
-                        </ul>
-                    </div>
-                {% else %}
-                    <a href="/login-page" class="btn btn-outline-primary me-2">登录</a>
-                    <a href="/register-page" class="btn btn-primary text-white">注册</a>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</nav>
+<!-- 导航栏 -->
+{% include 'partials/navbar.html' %}
 
     <!-- 主内容区 -->
     <main class="py-4">
@@ -351,46 +288,7 @@
     </main>
 
     <!-- 页脚 -->
-    <footer class="py-5 mt-5">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-4 mb-4">
-                    <h5 class="mb-3"><i class="fas fa-compass me-2"></i>智能旅游助手</h5>
-                    <p class="text-muted">您的智能旅行伙伴，帮助您发现中国最美的风景。</p>
-                </div>
-                <div class="col-md-2 mb-4">
-                    <h6 class="mb-3">快速链接</h6>
-                    <ul class="list-unstyled">
-                        <li class="mb-2"><a href="/">首页</a></li>
-                        <li class="mb-2"><a href="/?view=hot">热门景点</a></li>
-                        <li class="mb-2"><a href="/chat">智能助手</a></li>
-                    </ul>
-                </div>
-                <div class="col-md-3 mb-4">
-                    <h6 class="mb-3">景点分类</h6>
-                    <ul class="list-unstyled">
-                        <li class="mb-2"><a href="/?category=历史古迹">历史古迹</a></li>
-                        <li class="mb-2"><a href="/?category=自然景观">自然景观</a></li>
-                        <li class="mb-2"><a href="/?category=主题公园">主题公园</a></li>
-                    </ul>
-                </div>
-                <div class="col-md-3 mb-4">
-                    <h6 class="mb-3">联系我们</h6>
-                    <p class="text-muted mb-1"><i class="fas fa-envelope me-2"></i>support@travelai.com</p>
-                    <p class="text-muted mb-1"><i class="fas fa-phone me-2"></i>400-123-4567</p>
-                    <div class="mt-3">
-                        <a href="#" class="me-3"><i class="fab fa-weixin fa-lg"></i></a>
-                        <a href="#" class="me-3"><i class="fab fa-weibo fa-lg"></i></a>
-                        <a href="#"><i class="fab fa-qq fa-lg"></i></a>
-                    </div>
-                </div>
-            </div>
-            <hr class="my-4" style="border-color: #333;">
-            <div class="text-center text-muted">
-                <p class="mb-0">&copy; 2024 智能旅游助手. 保留所有权利.</p>
-            </div>
-        </div>
-    </footer>
+    {% include 'partials/footer.html' %}
 
     <!-- 背景切换按钮 -->
     <button class="bg-switch-btn" onclick="changeBackground()">
